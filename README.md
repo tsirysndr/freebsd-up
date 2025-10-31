@@ -4,6 +4,8 @@ A simple, zero-configuration script to quickly boot FreeBSD ISO images using
 QEMU. Perfect for testing, development, or learning FreeBSD without complex
 setup.
 
+![Preview](./preview.png)
+
 ## ✨ Features
 
 - 🔗 **Download and boot from URLs**: Automatically downloads ISO images from
