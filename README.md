@@ -19,7 +19,7 @@ setup.
 
 Before using FreeBSD-Up, make sure you have:
 
-- **[Deno](https://deno.land/)** - Modern JavaScript/TypeScript runtime
+- **[Deno](https://deno.com)** - Modern JavaScript/TypeScript runtime
 - **[QEMU](https://www.qemu.org/)** - Hardware virtualization
 - **KVM support** (Linux) - For hardware acceleration (optional but recommended)
 
