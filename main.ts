@@ -36,7 +36,7 @@ if (import.meta.main) {
   if (Deno.args.length !== 1) {
     console.error(
       chalk.greenBright(
-        "Usage: deno run --allow-run --allow-read --allow-env main.ts <path-to-iso>",
+        "Usage: freebsd-up <path-to-iso>",
       ),
     );
     Deno.exit(1);
