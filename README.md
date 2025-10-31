@@ -144,5 +144,7 @@ This project is open source. Check the repository for license details.
 
 ---
 
-**Note**: This tool is designed for development and testing purposes. For
-production FreeBSD deployments, consider using proper installation methods.
+> [!NOTE]
+>
+> This tool is designed for development and testing purposes. For production
+> FreeBSD deployments, consider using proper installation methods.
