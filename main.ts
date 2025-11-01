@@ -8,6 +8,7 @@ const DEFAULT_VERSION = "14.3-RELEASE";
 interface Options {
   output?: string;
   cpu: string;
+  cpus: number;
   memory: string;
 }
 
@@ -56,7 +57,7 @@ async function runQemu(isoPath: string, options: Options): Promise<void> {
       "-m",
       options.memory,
       "-smp",
-      "2",
+      options.cpus.toString(),
       "-cdrom",
       isoPath,
       //"-drive",
@@ -121,6 +122,9 @@ if (import.meta.main) {
     .option("-c, --cpu <type:string>", "Type of CPU to emulate", {
       default: "host",
     })
+    .option("-C, --cpus <number:number>", "Number of CPU cores", {
+      default: 2,
+    })
     .option("-m, --memory <size:string>", "Amount of memory for the VM", {
       default: "2G",
     })
@@ -154,6 +158,7 @@ if (import.meta.main) {
       await runQemu(isoPath, {
         cpu: options.cpu,
         memory: options.memory,
+        cpus: options.cpus,
       });
     })
     .parse(Deno.args);
