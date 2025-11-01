@@ -123,7 +123,9 @@ if (import.meta.main) {
     .name("freebsd-up")
     .version("0.1.0")
     .description("Start a FreeBSD virtual machine using QEMU")
-    .arguments("[path-to-iso-or-version:string]")
+    .arguments(
+      "[path-or-url-to-iso-or-version:string]",
+    )
     .option("-o, --output <path:string>", "Output path for downloaded ISO")
     .option("-c, --cpu <type:string>", "Type of CPU to emulate", {
       default: "host",
