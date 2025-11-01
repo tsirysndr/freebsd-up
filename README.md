@@ -59,6 +59,10 @@ curl -fsSL https://deno.land/install.sh | sh
 brew install qemu deno
 ```
 
+```bash
+deno install -A -g -r -f --config deno.json ./main.ts -n freebsd-up
+```
+
 ## 🚀 Quick Start
 
 ### Default Usage (Easiest)
