@@ -21,8 +21,10 @@ setup.
   guest:22)
 - 💾 **Smart caching**: Automatically skips re-downloading existing ISO files
 - 🆘 **Help support**: Built-in help with `--help` or `-h` flags
-- ⚙️ **Configurable VM options**: Customize CPU type, core count, and memory
-  allocation
+- ⚙️ **Configurable VM options**: Customize CPU type, core count, memory
+  allocation, and persistent storage
+- 💾 **Persistent storage support**: Attach disk images for data persistence
+- 🗂️ **Multiple disk formats**: Support for qcow2, raw, and other disk formats
 - 📝 **Enhanced CLI**: Powered by [Cliffy](http://cliffy.io/) for robust
   command-line parsing
 
@@ -95,7 +97,7 @@ Download and boot from a specific URL:
 
 ### Customize VM Configuration
 
-Specify custom CPU type, core count, and memory allocation:
+Specify custom CPU type, core count, memory allocation, and persistent storage:
 
 ```bash
 # Custom CPU and memory
@@ -104,11 +106,14 @@ Specify custom CPU type, core count, and memory allocation:
 # Specify number of CPU cores
 ./main.ts --cpus 4 --memory 8G 15.0-BETA3
 
+# Attach a disk image for persistent storage
+./main.ts --drive ./freebsd-disk.img --disk-format qcow2 14.3-RELEASE
+
 # Download to specific location
 ./main.ts --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
-./main.ts --cpu qemu64 --cpus 2 --memory 1G --output ./my-freebsd.iso
+./main.ts --cpu qemu64 --cpus 2 --memory 1G --drive ./my-disk.qcow2 --disk-format qcow2 --output ./my-freebsd.iso
 ```
 
 ### Get Help
@@ -134,6 +139,9 @@ FreeBSD-Up supports several command-line options for customization:
 - `-c, --cpu <type>` - CPU type to emulate (default: `host`)
 - `-C, --cpus <number>` - Number of CPU cores (default: `2`)
 - `-m, --memory <size>` - Amount of memory for the VM (default: `2G`)
+- `-d, --drive <path>` - Path to VM disk image for persistent storage
+- `--disk-format <format>` - Disk image format: qcow2, raw, etc. (default:
+  `raw`)
 - `-o, --output <path>` - Output path for downloaded ISO files
 - `-h, --help` - Show help information
 - `-V, --version` - Show version information
@@ -150,11 +158,14 @@ FreeBSD-Up supports several command-line options for customization:
 # Use more CPU cores
 ./main.ts --cpus 4 14.3-RELEASE
 
+# Attach a persistent disk image
+./main.ts --drive ./freebsd-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+
 # Save ISO to specific location
 ./main.ts --output ./isos/freebsd.iso https://example.com/freebsd.iso
 
-# Combine multiple options
-./main.ts --cpu host --cpus 4 --memory 8G --output ./downloads/ 14.3-RELEASE
+# Combine multiple options with persistent storage
+./main.ts --cpu host --cpus 4 --memory 8G --drive ./vm-disk.qcow2 --disk-format qcow2 --output ./downloads/ 14.3-RELEASE
 ```
 
 ## 🖥️ Console Setup
@@ -178,6 +189,8 @@ The script creates a VM with the following default specifications:
 - **CPU**: Host CPU with KVM acceleration (configurable with `--cpu`)
 - **Memory**: 2GB RAM (configurable with `--memory`)
 - **Cores**: 2 virtual CPUs (configurable with `--cpus`)
+- **Storage**: ISO-only by default; optional persistent disk (configurable with
+  `--drive`)
 - **Network**: User mode networking with SSH forwarding
 - **Console**: Enhanced serial console via stdio with proper signal handling
 - **Default Version**: FreeBSD 14.3-RELEASE (when no arguments provided)
@@ -191,6 +204,15 @@ Common CPU types you can specify with `--cpu`:
 - `Broadwell` - Intel Broadwell CPU
 - `Skylake-Client` - Intel Skylake CPU
 - `max` - Enable all supported CPU features
+
+### Available Disk Formats
+
+Common disk formats you can specify with `--disk-format`:
+
+- `raw` (default) - Raw disk image format for maximum compatibility
+- `qcow2` - QEMU Copy On Write format with compression and snapshots
+- `vmdk` - VMware disk format
+- `vdi` - VirtualBox disk format
 
 ## 🔧 Customization
 
@@ -208,8 +230,23 @@ The easiest way to customize VM settings is through command-line options:
 # Increase CPU cores to 4
 ./main.ts --cpus 4
 
-# Combine options
-./main.ts --cpu host --cpus 4 --memory 8G 14.3-RELEASE
+# Add persistent storage
+./main.ts --drive ./freebsd-data.qcow2 --disk-format qcow2
+
+# Combine options with persistent storage
+./main.ts --cpu host --cpus 4 --memory 8G --drive ./vm-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+```
+
+### Creating Disk Images
+
+Before using the `--drive` option, you may need to create a disk image:
+
+```bash
+# Create a 20GB qcow2 disk image
+qemu-img create -f qcow2 freebsd-data.qcow2 20G
+
+# Create a 10GB raw disk image
+qemu-img create -f raw freebsd-data.img 10G
 ```
 
 ### Advanced Customization
@@ -231,6 +268,13 @@ const cmd = new Deno.Command("qemu-system-x86_64", {
     "stdio,id=con0,signal=off", // Enhanced console handling
     "-serial",
     "chardev:con0",
+    // Conditional drive attachment for persistent storage
+    ...(options.drive
+      ? [
+        "-drive",
+        `file=${options.drive},format=${options.diskFormat},if=virtio`,
+      ]
+      : []),
     // ... other options
   ],
   // ...
