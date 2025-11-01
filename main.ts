@@ -10,6 +10,8 @@ interface Options {
   cpu: string;
   cpus: number;
   memory: string;
+  drive?: string;
+  diskFormat: string;
 }
 
 async function downloadIso(url: string, outputPath?: string): Promise<string> {
@@ -60,8 +62,6 @@ async function runQemu(isoPath: string, options: Options): Promise<void> {
       options.cpus.toString(),
       "-cdrom",
       isoPath,
-      //"-drive",
-      //"file=freebsd-vm.img,format=raw,if=virtio",
       "-netdev",
       "user,id=net0,hostfwd=tcp::2222-:22",
       "-device",
@@ -73,6 +73,12 @@ async function runQemu(isoPath: string, options: Options): Promise<void> {
       "stdio,id=con0,signal=off",
       "-serial",
       "chardev:con0",
+      ...(options.drive
+        ? [
+          "-drive",
+          `file=${options.drive},format=${options.diskFormat},if=virtio`,
+        ]
+        : []),
     ],
     stdin: "inherit",
     stdout: "inherit",
@@ -128,6 +134,14 @@ if (import.meta.main) {
     .option("-m, --memory <size:string>", "Amount of memory for the VM", {
       default: "2G",
     })
+    .option("-d, --drive <path:string>", "Path to VM disk image")
+    .option(
+      "--disk-format <format:string>",
+      "Disk image format (e.g., qcow2, raw)",
+      {
+        default: "raw",
+      },
+    )
     .example(
       "Default usage",
       "freebsd-up",
@@ -159,6 +173,8 @@ if (import.meta.main) {
         cpu: options.cpu,
         memory: options.memory,
         cpus: options.cpus,
+        drive: options.drive,
+        diskFormat: options.diskFormat,
       });
     })
     .parse(Deno.args);
