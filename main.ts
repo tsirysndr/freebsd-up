@@ -1,8 +1,15 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
 
+import { Command } from "@cliffy/command";
 import chalk from "chalk";
 
 const DEFAULT_VERSION = "14.3-RELEASE";
+
+interface Options {
+  output?: string;
+  cpu: string;
+  memory: string;
+}
 
 async function downloadIso(url: string, outputPath?: string): Promise<string> {
   const filename = url.split("/").pop()!;
@@ -34,59 +41,20 @@ async function downloadIso(url: string, outputPath?: string): Promise<string> {
   return outputPath;
 }
 
-if (import.meta.main) {
-  if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
-    console.error(
-      chalk.greenBright(
-        "Usage: freebsd-up [path-to-iso | version | url]",
-      ),
-    );
-    Deno.exit(1);
-  }
+function constructDownloadUrl(version: string): string {
+  return `https://download.freebsd.org/ftp/releases/ISO-IMAGES/${
+    version.split("-")[0]
+  }/FreeBSD-${version}-amd64-disc1.iso`;
+}
 
-  if (Deno.args.length === 0) {
-    console.log(
-      chalk.blueBright(
-        `No ISO path provided, defaulting to ${chalk.cyan("FreeBSD")} ${
-          chalk.cyan(DEFAULT_VERSION)
-        }...`,
-      ),
-    );
-    const url = `https://download.freebsd.org/ftp/releases/ISO-IMAGES/${
-      DEFAULT_VERSION.split("-")[0]
-    }/FreeBSD-${DEFAULT_VERSION}-amd64-disc1.iso`;
-    Deno.args.push(url);
-  } else {
-    const versionRegex = /^\d{1,2}\.\d{1,2}-(RELEASE|BETA\d*|RC\d*)$/;
-    const arg = Deno.args[0];
-    if (versionRegex.test(arg)) {
-      console.log(
-        chalk.blueBright(
-          `Detected version ${chalk.cyan(arg)}, constructing download URL...`,
-        ),
-      );
-      const url = `https://download.freebsd.org/ftp/releases/ISO-IMAGES/${
-        arg.split("-")[0]
-      }/FreeBSD-${arg}-amd64-disc1.iso`;
-      Deno.args[0] = url;
-    }
-  }
-
-  let isoPath = Deno.args[0];
-
-  if (
-    Deno.args[0].startsWith("https://") || Deno.args[0].startsWith("http://")
-  ) {
-    isoPath = await downloadIso(Deno.args[0]);
-  }
-
+async function runQemu(isoPath: string, options: Options): Promise<void> {
   const cmd = new Deno.Command("qemu-system-x86_64", {
     args: [
       "-enable-kvm",
       "-cpu",
-      "host",
+      options.cpu,
       "-m",
-      "2G",
+      options.memory,
       "-smp",
       "2",
       "-cdrom",
@@ -115,4 +83,78 @@ if (import.meta.main) {
   if (!status.success) {
     Deno.exit(status.code);
   }
+}
+
+function handleInput(input?: string): string {
+  if (!input) {
+    console.log(
+      chalk.blueBright(
+        `No ISO path provided, defaulting to ${chalk.cyan("FreeBSD")} ${
+          chalk.cyan(DEFAULT_VERSION)
+        }...`,
+      ),
+    );
+    return constructDownloadUrl(DEFAULT_VERSION);
+  }
+
+  const versionRegex = /^\d{1,2}\.\d{1,2}-(RELEASE|BETA\d*|RC\d*)$/;
+
+  if (versionRegex.test(input)) {
+    console.log(
+      chalk.blueBright(
+        `Detected version ${chalk.cyan(input)}, constructing download URL...`,
+      ),
+    );
+    return constructDownloadUrl(input);
+  }
+
+  return input;
+}
+
+if (import.meta.main) {
+  await new Command()
+    .name("freebsd-up")
+    .version("0.1.0")
+    .description("Start a FreeBSD virtual machine using QEMU")
+    .arguments("[path-to-iso-or-version:string]")
+    .option("-o, --output <path:string>", "Output path for downloaded ISO")
+    .option("-c, --cpu <type:string>", "Type of CPU to emulate", {
+      default: "host",
+    })
+    .option("-m, --memory <size:string>", "Amount of memory for the VM", {
+      default: "2G",
+    })
+    .example(
+      "Default usage",
+      "freebsd-up",
+    )
+    .example(
+      "Specific version",
+      "freebsd-up 14.3-RELEASE",
+    )
+    .example(
+      "Local ISO file",
+      "freebsd-up /path/to/freebsd.iso",
+    )
+    .example(
+      "Download URL",
+      "freebsd-up https://download.freebsd.org/ftp/releases/ISO-IMAGES/14.3/FreeBSD-14.3-RELEASE-amd64-disc1.iso",
+    )
+    .action(async (options: Options, input?: string) => {
+      const resolvedInput = handleInput(input);
+      let isoPath = resolvedInput;
+
+      if (
+        resolvedInput.startsWith("https://") ||
+        resolvedInput.startsWith("http://")
+      ) {
+        isoPath = await downloadIso(resolvedInput, options.output);
+      }
+
+      await runQemu(isoPath, {
+        cpu: options.cpu,
+        memory: options.memory,
+      });
+    })
+    .parse(Deno.args);
 }
