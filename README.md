@@ -11,11 +11,16 @@ setup.
 - 🔗 **Download and boot from URLs**: Automatically downloads ISO images from
   remote URLs
 - 📁 **Local file support**: Boot from local ISO files
+- 🏷️ **Version shortcuts**: Simply specify a version like `14.3-RELEASE` to
+  auto-download
+- 🎯 **Smart defaults**: Run without arguments to boot the latest stable release
+  (FreeBSD 14.3-RELEASE)
 - ⚡ **Zero configuration**: Works out of the box with sensible defaults
 - 🖥️ **Serial console**: Configured for headless operation with stdio console
 - 🌐 **Network ready**: Pre-configured with SSH port forwarding (host:2222 →
   guest:22)
 - 💾 **Smart caching**: Automatically skips re-downloading existing ISO files
+- 🆘 **Help support**: Built-in help with `--help` or `-h` flags
 
 ## 📋 Prerequisites
 
@@ -50,9 +55,29 @@ brew install qemu deno
 
 ## 🚀 Quick Start
 
-### Boot from URL (Recommended)
+### Default Usage (Easiest)
 
-Download and boot the latest FreeBSD release:
+Simply run without any arguments to boot the latest stable FreeBSD release:
+
+```bash
+./main.ts
+```
+
+This will automatically download and boot FreeBSD 14.3-RELEASE.
+
+### Boot with Version Shortcut
+
+Specify just a version to auto-download and boot:
+
+```bash
+./main.ts 14.3-RELEASE
+./main.ts 15.0-BETA3
+./main.ts 13.4-RELEASE
+```
+
+### Boot from URL
+
+Download and boot from a specific URL:
 
 ```bash
 ./main.ts https://download.freebsd.org/ftp/releases/amd64/amd64/ISO-IMAGES/15.0/FreeBSD-15.0-BETA3-amd64-disc1.iso
@@ -64,12 +89,20 @@ Download and boot the latest FreeBSD release:
 ./main.ts /path/to/your/freebsd.iso
 ```
 
+### Get Help
+
+```bash
+./main.ts --help
+# or
+./main.ts -h
+```
+
 ### Alternative Execution Methods
 
 If the script isn't executable, you can run it directly with Deno:
 
 ```bash
-deno run --allow-run --allow-read --allow-env main.ts <iso-path-or-url>
+deno run --allow-run --allow-read --allow-env main.ts [options]
 ```
 
 ## 🖥️ Console Setup
@@ -94,7 +127,8 @@ The script creates a VM with the following specifications:
 - **Memory**: 2GB RAM
 - **Cores**: 2 virtual CPUs
 - **Network**: User mode networking with SSH forwarding
-- **Console**: Serial console via stdio
+- **Console**: Enhanced serial console via stdio with proper signal handling
+- **Default Version**: FreeBSD 14.3-RELEASE (when no arguments provided)
 
 ## 🔧 Customization
 
@@ -110,11 +144,27 @@ const cmd = new Deno.Command("qemu-system-x86_64", {
     "2G", // Change memory
     "-smp",
     "2", // Change CPU cores
+    "-chardev",
+    "stdio,id=con0,signal=off", // Enhanced console handling
+    "-serial",
+    "chardev:con0",
     // ... other options
   ],
   // ...
 });
 ```
+
+### Supported Version Formats
+
+The script automatically recognizes and handles these version formats:
+
+- `14.3-RELEASE` - Stable releases
+- `15.0-BETA3` - Beta versions
+- `13.4-RC1` - Release candidates
+- Any format matching: `X.Y-RELEASE|BETAX|RCX`
+
+To change the default version when no arguments are provided, modify the
+`DEFAULT_VERSION` constant in `main.ts`.
 
 ## 📁 Project Structure
 
