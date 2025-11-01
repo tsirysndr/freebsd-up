@@ -21,6 +21,9 @@ setup.
   guest:22)
 - 💾 **Smart caching**: Automatically skips re-downloading existing ISO files
 - 🆘 **Help support**: Built-in help with `--help` or `-h` flags
+- ⚙️ **Configurable VM options**: Customize CPU type and memory allocation
+- 📝 **Enhanced CLI**: Powered by [Cliffy](http://cliffy.io/) for robust
+  command-line parsing
 
 ## 📋 Prerequisites
 
@@ -89,6 +92,21 @@ Download and boot from a specific URL:
 ./main.ts /path/to/your/freebsd.iso
 ```
 
+### Customize VM Configuration
+
+Specify custom CPU type and memory allocation:
+
+```bash
+# Custom CPU and memory
+./main.ts --cpu host --memory 4G 14.3-RELEASE
+
+# Download to specific location
+./main.ts --output ./downloads/freebsd.iso 15.0-BETA3
+
+# Combine options
+./main.ts --cpu qemu64 --memory 1G --output ./my-freebsd.iso
+```
+
 ### Get Help
 
 ```bash
@@ -103,6 +121,32 @@ If the script isn't executable, you can run it directly with Deno:
 
 ```bash
 deno run --allow-run --allow-read --allow-env main.ts [options]
+```
+
+## 🔧 Command Line Options
+
+FreeBSD-Up supports several command-line options for customization:
+
+- `-c, --cpu <type>` - CPU type to emulate (default: `host`)
+- `-m, --memory <size>` - Amount of memory for the VM (default: `2G`)
+- `-o, --output <path>` - Output path for downloaded ISO files
+- `-h, --help` - Show help information
+- `-V, --version` - Show version information
+
+### Examples
+
+```bash
+# Use different CPU type
+./main.ts --cpu qemu64 14.3-RELEASE
+
+# Allocate more memory
+./main.ts --memory 4G 15.0-BETA3
+
+# Save ISO to specific location
+./main.ts --output ./isos/freebsd.iso https://example.com/freebsd.iso
+
+# Combine multiple options
+./main.ts --cpu host --memory 8G --output ./downloads/ 14.3-RELEASE
 ```
 
 ## 🖥️ Console Setup
@@ -121,27 +165,55 @@ This enables proper console redirection to your terminal.
 
 ## ⚙️ VM Configuration
 
-The script creates a VM with the following specifications:
+The script creates a VM with the following default specifications:
 
-- **CPU**: Host CPU with KVM acceleration
-- **Memory**: 2GB RAM
+- **CPU**: Host CPU with KVM acceleration (configurable with `--cpu`)
+- **Memory**: 2GB RAM (configurable with `--memory`)
 - **Cores**: 2 virtual CPUs
 - **Network**: User mode networking with SSH forwarding
 - **Console**: Enhanced serial console via stdio with proper signal handling
 - **Default Version**: FreeBSD 14.3-RELEASE (when no arguments provided)
 
+### Available CPU Types
+
+Common CPU types you can specify with `--cpu`:
+
+- `host` (default) - Use host CPU features for best performance
+- `qemu64` - Generic 64-bit CPU for maximum compatibility
+- `Broadwell` - Intel Broadwell CPU
+- `Skylake-Client` - Intel Skylake CPU
+- `max` - Enable all supported CPU features
+
 ## 🔧 Customization
 
-To modify VM settings, edit the QEMU arguments in `main.ts`:
+### Modifying VM Settings via Command Line
+
+The easiest way to customize VM settings is through command-line options:
+
+```bash
+# Increase memory to 4GB
+./main.ts --memory 4G
+
+# Use a different CPU type
+./main.ts --cpu qemu64
+
+# Combine options
+./main.ts --cpu host --memory 8G 14.3-RELEASE
+```
+
+### Advanced Customization
+
+To modify other VM settings, edit the QEMU arguments in the `runQemu` function
+in `main.ts`:
 
 ```typescript
 const cmd = new Deno.Command("qemu-system-x86_64", {
   args: [
     "-enable-kvm",
     "-cpu",
-    "host",
+    options.cpu,
     "-m",
-    "2G", // Change memory
+    options.memory,
     "-smp",
     "2", // Change CPU cores
     "-chardev",
@@ -170,10 +242,19 @@ To change the default version when no arguments are provided, modify the
 
 ```
 freebsd-up/
-├── main.ts          # Main script
-├── deno.json        # Deno configuration
+├── main.ts          # Main script with Cliffy CLI integration
+├── deno.json        # Deno configuration with dependencies
+├── deno.lock        # Dependency lock file
 └── README.md        # This file
 ```
+
+### Dependencies
+
+The project uses the following key dependencies:
+
+- **[@cliffy/command](https://jsr.io/@cliffy/command)** - Modern command-line
+  argument parsing
+- **[chalk](https://www.npmjs.com/package/chalk)** - Terminal styling and colors
 
 ## 🤝 Contributing
 
@@ -193,6 +274,7 @@ This project is open source. Check the repository for license details.
 - [FreeBSD Downloads](https://www.freebsd.org/where/)
 - [QEMU Documentation](https://www.qemu.org/docs/master/)
 - [Deno Manual](https://docs.deno.com/runtime/)
+- [Cliffy Command Documentation](https://cliffy.io/docs@v1.0.0-rc.8/command/)
 
 ---
 
