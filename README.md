@@ -21,7 +21,8 @@ setup.
   guest:22)
 - 💾 **Smart caching**: Automatically skips re-downloading existing ISO files
 - 🆘 **Help support**: Built-in help with `--help` or `-h` flags
-- ⚙️ **Configurable VM options**: Customize CPU type and memory allocation
+- ⚙️ **Configurable VM options**: Customize CPU type, core count, and memory
+  allocation
 - 📝 **Enhanced CLI**: Powered by [Cliffy](http://cliffy.io/) for robust
   command-line parsing
 
@@ -94,17 +95,20 @@ Download and boot from a specific URL:
 
 ### Customize VM Configuration
 
-Specify custom CPU type and memory allocation:
+Specify custom CPU type, core count, and memory allocation:
 
 ```bash
 # Custom CPU and memory
 ./main.ts --cpu host --memory 4G 14.3-RELEASE
 
+# Specify number of CPU cores
+./main.ts --cpus 4 --memory 8G 15.0-BETA3
+
 # Download to specific location
 ./main.ts --output ./downloads/freebsd.iso 15.0-BETA3
 
-# Combine options
-./main.ts --cpu qemu64 --memory 1G --output ./my-freebsd.iso
+# Combine all options
+./main.ts --cpu qemu64 --cpus 2 --memory 1G --output ./my-freebsd.iso
 ```
 
 ### Get Help
@@ -128,6 +132,7 @@ deno run --allow-run --allow-read --allow-env main.ts [options]
 FreeBSD-Up supports several command-line options for customization:
 
 - `-c, --cpu <type>` - CPU type to emulate (default: `host`)
+- `-C, --cpus <number>` - Number of CPU cores (default: `2`)
 - `-m, --memory <size>` - Amount of memory for the VM (default: `2G`)
 - `-o, --output <path>` - Output path for downloaded ISO files
 - `-h, --help` - Show help information
@@ -142,11 +147,14 @@ FreeBSD-Up supports several command-line options for customization:
 # Allocate more memory
 ./main.ts --memory 4G 15.0-BETA3
 
+# Use more CPU cores
+./main.ts --cpus 4 14.3-RELEASE
+
 # Save ISO to specific location
 ./main.ts --output ./isos/freebsd.iso https://example.com/freebsd.iso
 
 # Combine multiple options
-./main.ts --cpu host --memory 8G --output ./downloads/ 14.3-RELEASE
+./main.ts --cpu host --cpus 4 --memory 8G --output ./downloads/ 14.3-RELEASE
 ```
 
 ## 🖥️ Console Setup
@@ -169,7 +177,7 @@ The script creates a VM with the following default specifications:
 
 - **CPU**: Host CPU with KVM acceleration (configurable with `--cpu`)
 - **Memory**: 2GB RAM (configurable with `--memory`)
-- **Cores**: 2 virtual CPUs
+- **Cores**: 2 virtual CPUs (configurable with `--cpus`)
 - **Network**: User mode networking with SSH forwarding
 - **Console**: Enhanced serial console via stdio with proper signal handling
 - **Default Version**: FreeBSD 14.3-RELEASE (when no arguments provided)
@@ -197,8 +205,11 @@ The easiest way to customize VM settings is through command-line options:
 # Use a different CPU type
 ./main.ts --cpu qemu64
 
+# Increase CPU cores to 4
+./main.ts --cpus 4
+
 # Combine options
-./main.ts --cpu host --memory 8G 14.3-RELEASE
+./main.ts --cpu host --cpus 4 --memory 8G 14.3-RELEASE
 ```
 
 ### Advanced Customization
@@ -215,7 +226,7 @@ const cmd = new Deno.Command("qemu-system-x86_64", {
     "-m",
     options.memory,
     "-smp",
-    "2", // Change CPU cores
+    options.cpus.toString(), // Number of CPU cores
     "-chardev",
     "stdio,id=con0,signal=off", // Enhanced console handling
     "-serial",
