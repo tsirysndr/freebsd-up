@@ -72,7 +72,7 @@ deno install -A -g -r -f --config deno.json ./main.ts -n freebsd-up
 Simply run without any arguments to boot the latest stable FreeBSD release:
 
 ```bash
-./main.ts
+freebsd-up
 ```
 
 This will automatically download and boot FreeBSD 14.3-RELEASE.
@@ -82,9 +82,9 @@ This will automatically download and boot FreeBSD 14.3-RELEASE.
 Specify just a version to auto-download and boot:
 
 ```bash
-./main.ts 14.3-RELEASE
-./main.ts 15.0-BETA3
-./main.ts 13.4-RELEASE
+freebsd-up 14.3-RELEASE
+freebsd-up 15.0-BETA3
+freebsd-up 13.4-RELEASE
 ```
 
 ### Boot from URL
@@ -92,13 +92,13 @@ Specify just a version to auto-download and boot:
 Download and boot from a specific URL:
 
 ```bash
-./main.ts https://download.freebsd.org/ftp/releases/amd64/amd64/ISO-IMAGES/15.0/FreeBSD-15.0-BETA3-amd64-disc1.iso
+freebsd-up https://download.freebsd.org/ftp/releases/amd64/amd64/ISO-IMAGES/15.0/FreeBSD-15.0-BETA3-amd64-disc1.iso
 ```
 
 ### Boot from Local File
 
 ```bash
-./main.ts /path/to/your/freebsd.iso
+freebsd-up /path/to/your/freebsd.iso
 ```
 
 ### Customize VM Configuration
@@ -107,19 +107,19 @@ Specify custom CPU type, core count, memory allocation, and persistent storage:
 
 ```bash
 # Custom CPU and memory
-./main.ts --cpu host --memory 4G 14.3-RELEASE
+freebsd-up --cpu host --memory 4G 14.3-RELEASE
 
 # Specify number of CPU cores
-./main.ts --cpus 4 --memory 8G 15.0-BETA3
+freebsd-up --cpus 4 --memory 8G 15.0-BETA3
 
 # Attach a disk image for persistent storage
-./main.ts --drive ./freebsd-disk.img --disk-format qcow2 14.3-RELEASE
+freebsd-up --drive ./freebsd-disk.img --disk-format qcow2 14.3-RELEASE
 
 # Download to specific location
-./main.ts --output ./downloads/freebsd.iso 15.0-BETA3
+freebsd-up --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
-./main.ts --cpu qemu64 --cpus 2 --memory 1G --drive ./my-disk.qcow2 --disk-format qcow2 --output ./my-freebsd.iso
+freebsd-up --cpu qemu64 --cpus 2 --memory 1G --drive ./my-disk.qcow2 --disk-format qcow2 --output ./my-freebsd.iso
 ```
 
 ### Get Help
@@ -156,22 +156,22 @@ FreeBSD-Up supports several command-line options for customization:
 
 ```bash
 # Use different CPU type
-./main.ts --cpu qemu64 14.3-RELEASE
+freebsd-up --cpu qemu64 14.3-RELEASE
 
 # Allocate more memory
-./main.ts --memory 4G 15.0-BETA3
+freebsd-up --memory 4G 15.0-BETA3
 
 # Use more CPU cores
-./main.ts --cpus 4 14.3-RELEASE
+freebsd-up --cpus 4 14.3-RELEASE
 
 # Attach a persistent disk image
-./main.ts --drive ./freebsd-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+freebsd-up --drive ./freebsd-storage.qcow2 --disk-format qcow2 14.3-RELEASE
 
 # Save ISO to specific location
-./main.ts --output ./isos/freebsd.iso https://example.com/freebsd.iso
+freebsd-up --output ./isos/freebsd.iso https://example.com/freebsd.iso
 
 # Combine multiple options with persistent storage
-./main.ts --cpu host --cpus 4 --memory 8G --drive ./vm-disk.qcow2 --disk-format qcow2 --output ./downloads/ 14.3-RELEASE
+freebsd-up --cpu host --cpus 4 --memory 8G --drive ./vm-disk.qcow2 --disk-format qcow2 --output ./downloads/ 14.3-RELEASE
 ```
 
 ## 🖥️ Console Setup
@@ -228,19 +228,19 @@ The easiest way to customize VM settings is through command-line options:
 
 ```bash
 # Increase memory to 4GB
-./main.ts --memory 4G
+freebsd-up --memory 4G
 
 # Use a different CPU type
-./main.ts --cpu qemu64
+freebsd-up --cpu qemu64
 
 # Increase CPU cores to 4
-./main.ts --cpus 4
+freebsd-up --cpus 4
 
 # Add persistent storage
-./main.ts --drive ./freebsd-data.qcow2 --disk-format qcow2
+freebsd-up --drive ./freebsd-data.qcow2 --disk-format qcow2
 
 # Combine options with persistent storage
-./main.ts --cpu host --cpus 4 --memory 8G --drive ./vm-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+freebsd-up --cpu host --cpus 4 --memory 8G --drive ./vm-storage.qcow2 --disk-format qcow2 14.3-RELEASE
 ```
 
 ### Creating Disk Images
