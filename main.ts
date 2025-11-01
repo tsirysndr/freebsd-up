@@ -179,7 +179,7 @@ if (import.meta.main) {
     )
     .option(
       "-s, --size <size:string>",
-      "Size of the disk image to create if it doesn't exist",
+      "Size of the disk image to create if it doesn't exist (e.g., 20G)",
       {
         default: "20G",
       },
