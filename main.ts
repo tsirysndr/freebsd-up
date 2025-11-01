@@ -2,6 +2,8 @@
 
 import chalk from "chalk";
 
+const DEFAULT_VERSION = "14.3-RELEASE";
+
 async function downloadIso(url: string, outputPath?: string): Promise<string> {
   const filename = url.split("/").pop()!;
   outputPath = outputPath ?? filename;
@@ -33,13 +35,41 @@ async function downloadIso(url: string, outputPath?: string): Promise<string> {
 }
 
 if (import.meta.main) {
-  if (Deno.args.length !== 1) {
+  if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
     console.error(
       chalk.greenBright(
-        "Usage: freebsd-up <path-to-iso>",
+        "Usage: freebsd-up [path-to-iso | version | url]",
       ),
     );
     Deno.exit(1);
+  }
+
+  if (Deno.args.length === 0) {
+    console.log(
+      chalk.blueBright(
+        `No ISO path provided, defaulting to ${chalk.cyan("FreeBSD")} ${
+          chalk.cyan(DEFAULT_VERSION)
+        }...`,
+      ),
+    );
+    const url = `https://download.freebsd.org/ftp/releases/ISO-IMAGES/${
+      DEFAULT_VERSION.split("-")[0]
+    }/FreeBSD-${DEFAULT_VERSION}-amd64-disc1.iso`;
+    Deno.args.push(url);
+  } else {
+    const versionRegex = /^\d{1,2}\.\d{1,2}-(RELEASE|BETA\d*|RC\d*)$/;
+    const arg = Deno.args[0];
+    if (versionRegex.test(arg)) {
+      console.log(
+        chalk.blueBright(
+          `Detected version ${chalk.cyan(arg)}, constructing download URL...`,
+        ),
+      );
+      const url = `https://download.freebsd.org/ftp/releases/ISO-IMAGES/${
+        arg.split("-")[0]
+      }/FreeBSD-${arg}-amd64-disc1.iso`;
+      Deno.args[0] = url;
+    }
   }
 
   let isoPath = Deno.args[0];
