@@ -10,7 +10,8 @@
     "jsr:@std/fmt@~1.0.2": "1.0.8",
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "jsr:@std/text@~1.0.7": "1.0.15",
-    "npm:chalk@^5.6.2": "5.6.2"
+    "npm:chalk@^5.6.2": "5.6.2",
+    "npm:lodash@^4.17.21": "4.17.21"
   },
   "jsr": {
     "@cliffy/command@1.0.0-rc.8": {
@@ -57,6 +58,9 @@
   "npm": {
     "chalk@5.6.2": {
       "integrity": "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="
+    },
+    "lodash@4.17.21": {
+      "integrity": "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="
     }
   },
   "workspace": {
@@ -64,7 +68,8 @@
       "jsr:@cliffy/command@^1.0.0-rc.8",
       "jsr:@cliffy/flags@^1.0.0-rc.8",
       "jsr:@std/assert@1",
-      "npm:chalk@^5.6.2"
+      "npm:chalk@^5.6.2",
+      "npm:lodash@^4.17.21"
     ]
   }
 }
