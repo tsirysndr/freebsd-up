@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
 
 import { Command } from "@cliffy/command";
-import { createBridgeNetworkIfNeeded } from "./network.ts";
+import { createBridgeNetworkIfNeeded } from "./src/network.ts";
 import {
   createDriveImageIfNeeded,
   downloadIso,
@@ -9,7 +9,7 @@ import {
   handleInput,
   Options,
   runQemu,
-} from "./utils.ts";
+} from "./src/utils.ts";
 
 if (import.meta.main) {
   await new Command()
