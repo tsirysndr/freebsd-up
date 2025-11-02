@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
 
 import { Command } from "@cliffy/command";
+import { createBridgeNetworkIfNeeded } from "./network.ts";
 import {
   createDriveImageIfNeeded,
   downloadIso,
@@ -43,6 +44,10 @@ if (import.meta.main) {
         default: "20G",
       },
     )
+    .option(
+      "-b, --bridge <name:string>",
+      "Name of the network bridge to use for networking (e.g., br0)",
+    )
     .example(
       "Default usage",
       "freebsd-up",
@@ -76,6 +81,10 @@ if (import.meta.main) {
 
       if (!input && options.drive && !await emptyDiskImage(options.drive)) {
         isoPath = null;
+      }
+
+      if (options.bridge) {
+        await createBridgeNetworkIfNeeded(options.bridge);
       }
 
       await runQemu(isoPath, options);

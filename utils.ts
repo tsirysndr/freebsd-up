@@ -11,6 +11,7 @@ export interface Options {
   drive?: string;
   diskFormat: string;
   size?: string;
+  bridge?: string;
 }
 
 async function du(path: string): Promise<number> {
@@ -90,8 +91,9 @@ export async function runQemu(
   isoPath: string | null,
   options: Options,
 ): Promise<void> {
-  const cmd = new Deno.Command("qemu-system-x86_64", {
+  const cmd = new Deno.Command(options.bridge ? "sudo" : "qemu-system-x86_64", {
     args: [
+      ..._.compact([options.bridge && "qemu-system-x86_64"]),
       "-enable-kvm",
       "-cpu",
       options.cpu,
@@ -101,7 +103,9 @@ export async function runQemu(
       options.cpus.toString(),
       ..._.compact([isoPath && "-cdrom", isoPath]),
       "-netdev",
-      "user,id=net0,hostfwd=tcp::2222-:22",
+      options.bridge
+        ? `bridge,id=net0,br=${options.bridge}`
+        : "user,id=net0,hostfwd=tcp::2222-:22",
       "-device",
       "e1000,netdev=net0",
       "-nographic",
