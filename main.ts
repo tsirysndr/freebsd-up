@@ -77,14 +77,7 @@ if (import.meta.main) {
         isoPath = null;
       }
 
-      await runQemu(isoPath, {
-        cpu: options.cpu,
-        memory: options.memory,
-        cpus: options.cpus,
-        drive: options.drive,
-        diskFormat: options.diskFormat,
-        size: options.size,
-      });
+      await runQemu(isoPath, options);
     })
     .parse(Deno.args);
 }
