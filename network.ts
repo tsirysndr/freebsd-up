@@ -102,3 +102,19 @@ export async function createBridgeNetworkIfNeeded(
 
   await setupQemuBridge(bridgeName);
 }
+
+export function generateRandomMacAddress(): string {
+  const hexDigits = "0123456789ABCDEF";
+  let macAddress = "52:54:00";
+
+  for (let i = 0; i < 3; i++) {
+    macAddress += ":";
+    for (let j = 0; j < 2; j++) {
+      macAddress += hexDigits.charAt(
+        Math.floor(Math.random() * hexDigits.length),
+      );
+    }
+  }
+
+  return macAddress;
+}
