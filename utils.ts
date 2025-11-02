@@ -26,6 +26,15 @@ async function du(path: string): Promise<number> {
   return size;
 }
 
+export async function emptyDiskImage(path: string): Promise<boolean> {
+  if (!await Deno.stat(path).catch(() => false)) {
+    return true;
+  }
+
+  const size = await du(path);
+  return size < 10;
+}
+
 export async function downloadIso(
   url: string,
   options: Options,

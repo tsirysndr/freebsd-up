@@ -4,6 +4,7 @@ import { Command } from "@cliffy/command";
 import {
   createDriveImageIfNeeded,
   downloadIso,
+  emptyDiskImage,
   handleInput,
   Options,
   runQemu,
@@ -73,7 +74,7 @@ if (import.meta.main) {
         await createDriveImageIfNeeded(options);
       }
 
-      if (!input && options.drive) {
+      if (!input && options.drive && !await emptyDiskImage(options.drive)) {
         isoPath = null;
       }
 
