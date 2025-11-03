@@ -37,7 +37,7 @@ export async function emptyDiskImage(path: string): Promise<boolean> {
   }
 
   const size = await du(path);
-  return size < 10;
+  return size < 100;
 }
 
 export async function downloadIso(
