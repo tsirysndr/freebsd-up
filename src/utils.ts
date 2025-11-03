@@ -111,6 +111,9 @@ export async function runQemu(
       ..._.compact(
         Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
       ),
+      ..._.compact([
+        Deno.build.arch === "aarch64" && ["-machine", "virt,highmem=on"],
+      ]),
       "-cpu",
       options.cpu,
       "-m",
