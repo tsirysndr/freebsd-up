@@ -86,9 +86,15 @@ export async function downloadIso(
 }
 
 export function constructDownloadUrl(version: string): string {
+  let arch = "amd64";
+
+  if (Deno.build.arch === "aarch64") {
+    arch = "arm64-aarch64";
+  }
+
   return `https://download.freebsd.org/ftp/releases/ISO-IMAGES/${
     version.split("-")[0]
-  }/FreeBSD-${version}-amd64-disc1.iso`;
+  }/FreeBSD-${version}-${arch}-disc1.iso`;
 }
 
 export async function runQemu(
@@ -96,10 +102,15 @@ export async function runQemu(
   options: Options,
 ): Promise<void> {
   const macAddress = generateRandomMacAddress();
-  const cmd = new Deno.Command(options.bridge ? "sudo" : "qemu-system-x86_64", {
+  const qemu = Deno.build.arch === "aarch64"
+    ? "qemu-system-aarch64"
+    : "qemu-system-x86_64";
+  const cmd = new Deno.Command(options.bridge ? "sudo" : qemu, {
     args: [
-      ..._.compact([options.bridge && "qemu-system-x86_64"]),
-      "-enable-kvm",
+      ..._.compact([options.bridge && qemu]),
+      ..._.compact(
+        Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+      ),
       "-cpu",
       options.cpu,
       "-m",

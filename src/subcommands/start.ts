@@ -12,10 +12,15 @@ export default async function (name: string) {
 
   console.log(`Starting virtual machine ${vm.name} (ID: ${vm.id})...`);
 
-  const cmd = new Deno.Command(vm.bridge ? "sudo" : "qemu-system-x86_64", {
+  const qemu = Deno.build.arch === "aarch64"
+    ? "qemu-system-aarch64"
+    : "qemu-system-x86_64";
+  const cmd = new Deno.Command(vm.bridge ? "sudo" : qemu, {
     args: [
-      ..._.compact([vm.bridge && "qemu-system-x86_64"]),
-      "-enable-kvm",
+      ..._.compact([vm.bridge && qemu]),
+      ..._.compact(
+        Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+      ),
       "-cpu",
       vm.cpu,
       "-m",
