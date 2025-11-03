@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { getInstanceState, updateInstanceState } from "../state.ts";
+import { setupFirmwareFilesIfNeeded } from "../utils.ts";
 
 export default async function (name: string) {
   const vm = await getInstanceState(name);
@@ -53,6 +54,7 @@ export default async function (name: string) {
           `file=${vm.drivePath},format=${vm.diskFormat},if=virtio`,
         ],
       ),
+      ...await setupFirmwareFilesIfNeeded(),
     ],
     stdin: "inherit",
     stdout: "inherit",
