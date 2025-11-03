@@ -123,7 +123,7 @@ export async function setupFirmwareFilesIfNeeded(): Promise<string[]> {
   const edk2VarsAarch64 = "./edk2-arm-vars.fd";
 
   await Deno.copyFile(
-    `${brewPrefix}/share/qemu/edk2-aarch64-vars.fd`,
+    `${brewPrefix}/share/qemu/edk2-arm-vars.fd`,
     edk2VarsAarch64,
   );
 
