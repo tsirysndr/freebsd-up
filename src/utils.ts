@@ -127,7 +127,12 @@ export async function setupFirmwareFilesIfNeeded(): Promise<string[]> {
     edk2VarsAarch64,
   );
 
-  return [edk2Aarch64, edk2VarsAarch64];
+  return [
+    "-drive",
+    `if=pflash,format=raw,file=${edk2Aarch64},readonly=on`,
+    "-drive",
+    `if=pflash,format=raw,file=${edk2VarsAarch64}`,
+  ];
 }
 
 export async function runQemu(
