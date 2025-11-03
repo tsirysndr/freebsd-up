@@ -48,13 +48,13 @@ export default async function (name: string) {
       "stdio,id=con0,signal=off",
       "-serial",
       "chardev:con0",
+      ...await setupFirmwareFilesIfNeeded(),
       ..._.compact(
         vm.drivePath && [
           "-drive",
           `file=${vm.drivePath},format=${vm.diskFormat},if=virtio`,
         ],
       ),
-      ...await setupFirmwareFilesIfNeeded(),
     ],
     stdin: "inherit",
     stdout: "inherit",

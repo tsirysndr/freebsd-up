@@ -173,13 +173,13 @@ export async function runQemu(
       "stdio,id=con0,signal=off",
       "-serial",
       "chardev:con0",
+      ...await setupFirmwareFilesIfNeeded(),
       ..._.compact(
         options.drive && [
           "-drive",
           `file=${options.drive},format=${options.diskFormat},if=virtio`,
         ],
       ),
-      ...await setupFirmwareFilesIfNeeded(),
     ],
     stdin: "inherit",
     stdout: "inherit",
