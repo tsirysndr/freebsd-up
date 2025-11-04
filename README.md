@@ -15,13 +15,16 @@ tracking, network bridging support, and zero-configuration defaults.
 
 ### Core VM Management
 
-- 🏗️ **Full VM lifecycle management**: Create, start, stop, and inspect VMs
+- 🏗️ **Full VM lifecycle management**: Create, start, stop, inspect, and remove
+  VMs
 - 💾 **Persistent state tracking**: SQLite database stores VM configurations and
   state
 - 📊 **VM listing and monitoring**: View running and stopped VMs with detailed
   information
 - 🔍 **VM inspection**: Get detailed information about any managed VM
+- 🗑️ **VM removal**: Clean removal of VMs from the database
 - 🏷️ **Auto-generated VM names**: Unique identifiers for easy VM management
+- 🏛️ **Cross-platform support**: Works on both x86_64 and aarch64 architectures
 
 ### Network & Storage
 
@@ -156,7 +159,11 @@ Inspect VM details:
 freebsd-up inspect vm-name
 ```
 
-freebsd-up /path/to/your/freebsd.iso
+Remove a VM:
+
+```bash
+freebsd-up rm vm-name
+```
 
 ````
 ### Customize VM Configuration
@@ -171,10 +178,10 @@ freebsd-up --cpu host --memory 4G 14.3-RELEASE
 freebsd-up --cpus 4 --memory 8G 15.0-BETA3
 
 # Attach a disk image for persistent storage
-freebsd-up --drive ./freebsd-disk.img --disk-format qcow2 14.3-RELEASE
+freebsd-up --image ./freebsd-disk.img --disk-format qcow2 14.3-RELEASE
 
 # Create disk image with specific size
-freebsd-up --drive ./freebsd-disk.qcow2 --disk-format qcow2 --size 50G 14.3-RELEASE
+freebsd-up --image ./freebsd-disk.qcow2 --disk-format qcow2 --size 50G 14.3-RELEASE
 
 # Use bridge networking (requires sudo)
 freebsd-up --bridge br0 14.3-RELEASE
@@ -183,23 +190,23 @@ freebsd-up --bridge br0 14.3-RELEASE
 freebsd-up --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
-freebsd-up --cpu qemu64 --cpus 2 --memory 1G --drive ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --output ./my-freebsd.iso
+freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --output ./my-freebsd.iso
 ````
 
 ### Get Help
 
 ```bash
-./main.ts --help
+freebsd-up --help
 # or
-./main.ts -h
+freebsd-up -h
 ```
 
 ### Alternative Execution Methods
 
-If the script isn't executable, you can run it directly with Deno:
+If you haven't installed via deno install, you can run it directly with Deno:
 
 ```bash
-deno run --allow-run --allow-read --allow-env main.ts [options]
+deno run --allow-run --allow-read --allow-env -g -r -f main.ts -n freebsd-up
 ```
 
 ## 🔧 Command Line Options
@@ -211,7 +218,7 @@ FreeBSD-Up supports several command-line options for customization:
 - `-c, --cpu <type>` - CPU type to emulate (default: `host`)
 - `-C, --cpus <number>` - Number of CPU cores (default: `2`)
 - `-m, --memory <size>` - Amount of memory for the VM (default: `2G`)
-- `-d, --drive <path>` - Path to VM disk image for persistent storage
+- `-i, --image <path>` - Path to VM disk image for persistent storage
 - `--disk-format <format>` - Disk image format: qcow2, raw, etc. (default:
   `raw`)
 - `-s, --size <size>` - Size of disk image to create if it doesn't exist
@@ -231,6 +238,7 @@ FreeBSD-Up supports several command-line options for customization:
 - `start <vm-name>` - Start a specific VM by name
 - `stop <vm-name>` - Stop a specific VM by name
 - `inspect <vm-name>` - Show detailed information about a VM
+- `rm <vm-name>` - Remove a VM and its configuration from the database
 
 ### Help Options
 
@@ -250,10 +258,10 @@ freebsd-up --memory 4G 15.0-BETA3
 freebsd-up --cpus 4 14.3-RELEASE
 
 # Attach a persistent disk image
-freebsd-up --drive ./freebsd-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+freebsd-up --image ./freebsd-storage.qcow2 --disk-format qcow2 14.3-RELEASE
 
 # Create a larger disk image automatically
-freebsd-up --drive ./freebsd-big.qcow2 --disk-format qcow2 --size 100G 14.3-RELEASE
+freebsd-up --image ./freebsd-big.qcow2 --disk-format qcow2 --size 100G 14.3-RELEASE
 
 # Use bridge networking for better network performance
 freebsd-up --bridge br0 14.3-RELEASE
@@ -262,7 +270,7 @@ freebsd-up --bridge br0 14.3-RELEASE
 freebsd-up --output ./isos/freebsd.iso https://example.com/freebsd.iso
 
 # Combine multiple options with bridge networking and persistent storage
-freebsd-up --cpu host --cpus 4 --memory 8G --drive ./vm-disk.qcow2 --disk-format qcow2 --size 50G --bridge br0 --output ./downloads/ 14.3-RELEASE
+freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-disk.qcow2 --disk-format qcow2 --size 50G --bridge br0 --output ./downloads/ 14.3-RELEASE
 
 # List all VMs (including stopped ones)
 freebsd-up ps --all
@@ -275,6 +283,9 @@ freebsd-up stop my-freebsd-vm
 
 # Get detailed information about a VM
 freebsd-up inspect my-freebsd-vm
+
+# Remove a VM
+freebsd-up rm my-freebsd-vm
 ```
 
 ## 🖥️ Console Setup
@@ -299,7 +310,7 @@ The script creates a VM with the following default specifications:
 - **Memory**: 2GB RAM (configurable with `--memory`)
 - **Cores**: 2 virtual CPUs (configurable with `--cpus`)
 - **Storage**: ISO-only by default; optional persistent disk (configurable with
-  `--drive`)
+  `--image`)
 - **Network**: User mode networking with SSH forwarding (host:2222 → guest:22)
   or bridge networking with `--bridge`
 - **Console**: Enhanced serial console via stdio with proper signal handling
@@ -364,23 +375,23 @@ freebsd-up --cpu qemu64
 freebsd-up --cpus 4
 
 # Add persistent storage
-freebsd-up --drive ./freebsd-data.qcow2 --disk-format qcow2
+freebsd-up --image ./freebsd-data.qcow2 --disk-format qcow2
 
 # Combine options with persistent storage
-freebsd-up --cpu host --cpus 4 --memory 8G --drive ./vm-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-storage.qcow2 --disk-format qcow2 14.3-RELEASE
 ```
 
 ### Creating Disk Images
 
-Before using the `--drive` option, you may need to create a disk image.
+Before using the `--image` option, you may need to create a disk image.
 FreeBSD-Up can automatically create disk images for you:
 
 ```bash
 # Automatically create a 20GB qcow2 disk image (default size)
-freebsd-up --drive ./freebsd-data.qcow2 --disk-format qcow2 14.3-RELEASE
+freebsd-up --image ./freebsd-data.qcow2 --disk-format qcow2 14.3-RELEASE
 
 # Create a larger 50GB disk image
-freebsd-up --drive ./freebsd-large.qcow2 --disk-format qcow2 --size 50G 14.3-RELEASE
+freebsd-up --image ./freebsd-large.qcow2 --disk-format qcow2 --size 50G 14.3-RELEASE
 
 # Manually create disk images with qemu-img
 qemu-img create -f qcow2 freebsd-data.qcow2 20G
@@ -408,17 +419,22 @@ automatically create the bridge if it doesn't exist.
 
 ### Advanced Customization
 
-To modify other VM settings, edit the QEMU arguments in the `runQemu` function
-in `src/utils.ts`. The main.ts file now serves as the CLI entry point with
-subcommand routing.
+To modify VM settings beyond command-line options, you can edit the QEMU
+arguments in the relevant functions in `src/utils.ts` (for VM creation) or
+`src/subcommands/start.ts` (for VM startup). The main.ts file serves as the CLI
+entry point with subcommand routing.
 
-Key architecture changes:
+Key architecture components:
 
 - **Modular design**: Core functionality split into separate modules in `src/`
 - **Database integration**: SQLite database for persistent VM state management
-- **Subcommand structure**: Dedicated commands for VM lifecycle operations
-- **Network management**: Automatic bridge setup and MAC address assignment
-- **State tracking**: Comprehensive VM state persistence across restarts
+  (see `src/db.ts`)
+- **Subcommand structure**: Dedicated commands for VM lifecycle operations in
+  `src/subcommands/`
+- **Network management**: Automatic bridge setup and MAC address assignment in
+  `src/network.ts`
+- **State tracking**: Comprehensive VM state persistence across restarts in
+  `src/state.ts`
 
 ### Supported Version Formats
 
@@ -451,6 +467,7 @@ freebsd-up/
     └── subcommands/     # CLI subcommand implementations
         ├── inspect.ts   # VM inspection command
         ├── ps.ts        # VM listing command
+        ├── rm.ts        # VM removal command
         ├── start.ts     # VM start command
         └── stop.ts      # VM stop command
 ```
@@ -459,12 +476,16 @@ freebsd-up/
 
 The project uses the following key dependencies:
 
+- **[@paralleldrive/cuid2](https://www.npmjs.com/package/@paralleldrive/cuid2)** -
+  Unique ID generation for VMs
 - **[@cliffy/command](https://jsr.io/@cliffy/command)** - Modern command-line
   argument parsing and subcommands
 - **[@cliffy/table](https://jsr.io/@cliffy/table)** - Formatted table output for
   VM listings
 - **[@db/sqlite](https://jsr.io/@db/sqlite)** - SQLite database for VM state
   persistence
+- **[@soapbox/kysely-deno-sqlite](https://jsr.io/@soapbox/kysely-deno-sqlite)** -
+  SQLite dialect for Kysely
 - **[kysely](https://www.npmjs.com/package/kysely)** - Type-safe SQL query
   builder
 - **[chalk](https://www.npmjs.com/package/chalk)** - Terminal styling and colors
@@ -485,7 +506,8 @@ Contributions are welcome! Feel free to:
 
 ## 📝 License
 
-This project is open source. Check the repository for license details.
+This project is licensed under the Mozilla Public License 2.0. See the LICENSE
+file for details.
 
 ## 🔗 Useful Links
 
