@@ -1,5 +1,9 @@
 # FreeBSD-Up 🚀
 
+[![JSR](https://jsr.io/badges/@tsiry/freebsd-up)](https://jsr.io/@tsiry/freebsd-up)
+[![deno module](https://shield.deno.dev/x/freebsdup)](https://deno.land/x/freebsdup)
+![deno compatibility](https://shield.deno.dev/deno/^2.5.6)
+
 A comprehensive FreeBSD virtual machine management tool built with Deno and
 QEMU. Effortlessly create, manage, and run FreeBSD VMs with persistent state
 tracking, network bridging support, and zero-configuration defaults.
