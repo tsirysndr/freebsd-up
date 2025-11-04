@@ -80,7 +80,7 @@ brew install qemu deno
 Run the following command to install the CLI:
 
 ```bash
-deno install -A -g -r -f --config deno.json ./main.ts -n freebsd-up
+deno install -A -g -r -f jsr:@tsiry/freebsd-up
 ```
 
 ## 🚀 Quick Start
