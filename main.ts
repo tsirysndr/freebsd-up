@@ -16,6 +16,8 @@ import {
   runQemu,
 } from "./src/utils.ts";
 
+export * from "./src/mod.ts";
+
 if (import.meta.main) {
   await new Command()
     .name("freebsd-up")

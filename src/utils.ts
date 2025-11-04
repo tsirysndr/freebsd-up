@@ -144,6 +144,7 @@ export async function runQemu(
   const qemu = Deno.build.arch === "aarch64"
     ? "qemu-system-aarch64"
     : "qemu-system-x86_64";
+
   const cmd = new Deno.Command(options.bridge ? "sudo" : qemu, {
     args: [
       ..._.compact([options.bridge && qemu]),
