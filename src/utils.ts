@@ -12,7 +12,7 @@ export interface Options {
   cpu: string;
   cpus: number;
   memory: string;
-  drive?: string;
+  image?: string;
   diskFormat: string;
   size: string;
   bridge?: string;
@@ -47,12 +47,12 @@ export async function downloadIso(
   const filename = url.split("/").pop()!;
   const outputPath = options.output ?? filename;
 
-  if (options.drive && await Deno.stat(options.drive).catch(() => false)) {
-    const driveSize = await du(options.drive);
+  if (options.image && await Deno.stat(options.image).catch(() => false)) {
+    const driveSize = await du(options.image);
     if (driveSize > 10) {
       console.log(
         chalk.yellowBright(
-          `Drive image ${options.drive} is not empty (size: ${driveSize} KB), skipping ISO download to avoid overwriting existing data.`,
+          `Drive image ${options.image} is not empty (size: ${driveSize} KB), skipping ISO download to avoid overwriting existing data.`,
         ),
       );
       return null;
@@ -176,9 +176,9 @@ export async function runQemu(
       "chardev:con0",
       ...await setupFirmwareFilesIfNeeded(),
       ..._.compact(
-        options.drive && [
+        options.image && [
           "-drive",
-          `file=${options.drive},format=${options.diskFormat},if=virtio`,
+          `file=${options.image},format=${options.diskFormat},if=virtio`,
         ],
       ),
     ],
@@ -198,7 +198,7 @@ export async function runQemu(
     diskSize: options.size,
     diskFormat: options.diskFormat,
     isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
-    drivePath: options.drive ? Deno.realPathSync(options.drive) : undefined,
+    drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
     version: DEFAULT_VERSION,
     status: "RUNNING",
     pid: cmd.pid,
@@ -239,7 +239,7 @@ export function handleInput(input?: string): string {
 
 export async function createDriveImageIfNeeded(
   {
-    drive: path,
+    image: path,
     diskFormat: format,
     size,
   }: Options,

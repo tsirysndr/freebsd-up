@@ -36,7 +36,7 @@ if (import.meta.main) {
     .option("-m, --memory <size:string>", "Amount of memory for the VM", {
       default: "2G",
     })
-    .option("-d, --drive <path:string>", "Path to VM disk image")
+    .option("-i, --image <path:string>", "Path to VM disk image")
     .option(
       "--disk-format <format:string>",
       "Disk image format (e.g., qcow2, raw)",
@@ -102,11 +102,11 @@ if (import.meta.main) {
         isoPath = await downloadIso(resolvedInput, options);
       }
 
-      if (options.drive) {
+      if (options.image) {
         await createDriveImageIfNeeded(options);
       }
 
-      if (!input && options.drive && !await emptyDiskImage(options.drive)) {
+      if (!input && options.image && !await emptyDiskImage(options.image)) {
         isoPath = null;
       }
 
