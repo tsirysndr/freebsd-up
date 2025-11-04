@@ -1,5 +1,6 @@
 # FreeBSD-Up 🚀
 
+[![release](https://github.com/tsirysndr/freebsd-up/actions/workflows/release.yml/badge.svg)](https://github.com/tsirysndr/freebsd-up/actions/workflows/release.yml)
 [![JSR](https://jsr.io/badges/@tsiry/freebsd-up)](https://jsr.io/@tsiry/freebsd-up)
 [![deno module](https://shield.deno.dev/x/freebsdup)](https://deno.land/x/freebsdup)
 ![deno compatibility](https://shield.deno.dev/deno/^2.5.6)
