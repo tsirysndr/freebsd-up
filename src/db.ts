@@ -87,7 +87,7 @@ migrations["001"] = {
   },
 };
 
-export const migrateToLatest = async (db: Database) => {
+export const migrateToLatest = async (db: Database): Promise<void> => {
   const migrator = new Migrator({ db, provider: migrationProvider });
   const { error } = await migrator.migrateToLatest();
   if (error) throw error;

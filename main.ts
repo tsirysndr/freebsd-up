@@ -118,8 +118,8 @@ if (import.meta.main) {
     })
     .command("ps", "List all virtual machines")
     .option("--all, -a", "Show all virtual machines, including stopped ones")
-    .action(async (options: { all: boolean }) => {
-      await ps(options.all);
+    .action(async (options: { all?: unknown }) => {
+      await ps(Boolean(options.all));
     })
     .command("start", "Start a virtual machine")
     .arguments("<vm-name:string>")

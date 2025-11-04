@@ -1,7 +1,7 @@
 import { DB_PATH } from "./constants.ts";
-import { createDb, migrateToLatest } from "./db.ts";
+import { createDb, type Database, migrateToLatest } from "./db.ts";
 
-export const db = createDb(DB_PATH);
+export const db: Database = createDb(DB_PATH);
 await migrateToLatest(db);
 
 export const ctx = {
