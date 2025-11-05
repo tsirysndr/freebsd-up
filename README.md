@@ -15,16 +15,19 @@ tracking, network bridging support, and zero-configuration defaults.
 
 ### Core VM Management
 
-- 🏗️ **Full VM lifecycle management**: Create, start, stop, inspect, and remove
+- 🏗️ **Full VM lifecycle management**: Create, start, stop, restart, inspect, and remove
   VMs
 - 💾 **Persistent state tracking**: SQLite database stores VM configurations and
   state
 - 📊 **VM listing and monitoring**: View running and stopped VMs with detailed
   information
 - 🔍 **VM inspection**: Get detailed information about any managed VM
+- 📋 **VM logging**: View and follow VM logs with built-in log management
+- 🔄 **VM restart**: Gracefully restart VMs with preserved configuration
 - 🗑️ **VM removal**: Clean removal of VMs from the database
 - 🏷️ **Auto-generated VM names**: Unique identifiers for easy VM management
 - 🏛️ **Cross-platform support**: Works on both x86_64 and aarch64 architectures
+- 🔧 **Background mode**: Run VMs in detached mode for headless operation
 
 ### Network & Storage
 
@@ -32,7 +35,8 @@ tracking, network bridging support, and zero-configuration defaults.
 - 🔗 **Network bridge support**: Automatic bridge creation and management with
   `--bridge`
 - 🖧 **MAC address management**: Persistent MAC addresses for each VM
-- 💾 **Persistent storage support**: Attach and auto-create disk images
+- � **Port forwarding**: Custom port mapping for network services with `--port-forward`
+- �💾 **Persistent storage support**: Attach and auto-create disk images
 - 🗂️ **Multiple disk formats**: Support for qcow2, raw, and other disk formats
 - 📏 **Configurable disk sizes**: Specify disk image size on creation
 
@@ -165,10 +169,28 @@ Remove a VM:
 freebsd-up rm vm-name
 ```
 
+Restart a VM:
+
+```bash
+freebsd-up restart vm-name
+```
+
+View VM logs:
+
+```bash
+freebsd-up logs vm-name
+```
+
+Follow VM logs in real-time:
+
+```bash
+freebsd-up logs vm-name --follow
+```
+
 ````
 ### Customize VM Configuration
 
-Specify custom CPU type, core count, memory allocation, persistent storage, and networking:
+Specify custom CPU type, core count, memory allocation, persistent storage, networking, and port forwarding:
 
 ```bash
 # Custom CPU and memory
@@ -186,11 +208,17 @@ freebsd-up --image ./freebsd-disk.qcow2 --disk-format qcow2 --size 50G 14.3-RELE
 # Use bridge networking (requires sudo)
 freebsd-up --bridge br0 14.3-RELEASE
 
+# Configure port forwarding for specific services
+freebsd-up --port-forward 8080:80,2222:22 14.3-RELEASE
+
+# Run VM in background (detached mode)
+freebsd-up --detach 14.3-RELEASE
+
 # Download to specific location
 freebsd-up --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
-freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --output ./my-freebsd.iso
+freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --port-forward 8080:80,2222:22 --detach --output ./my-freebsd.iso
 ````
 
 ### Get Help
@@ -227,6 +255,11 @@ FreeBSD-Up supports several command-line options for customization:
 ### Network Options
 
 - `-b, --bridge <name>` - Name of the network bridge to use (e.g., br0)
+- `-p, --port-forward <mappings>` - Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)
+
+### Execution Options
+
+- `-d, --detach` - Run VM in the background and print VM name
 
 ### File Options
 
@@ -235,9 +268,11 @@ FreeBSD-Up supports several command-line options for customization:
 ### Management Commands
 
 - `ps [--all]` - List running VMs (use --all to include stopped VMs)
-- `start <vm-name>` - Start a specific VM by name
+- `start <vm-name> [--detach]` - Start a specific VM by name (optionally in background)
 - `stop <vm-name>` - Stop a specific VM by name
+- `restart <vm-name>` - Restart a specific VM by name
 - `inspect <vm-name>` - Show detailed information about a VM
+- `logs <vm-name> [--follow]` - View VM logs (optionally follow in real-time)
 - `rm <vm-name>` - Remove a VM and its configuration from the database
 
 ### Help Options
@@ -266,11 +301,17 @@ freebsd-up --image ./freebsd-big.qcow2 --disk-format qcow2 --size 100G 14.3-RELE
 # Use bridge networking for better network performance
 freebsd-up --bridge br0 14.3-RELEASE
 
+# Configure port forwarding for web and SSH access
+freebsd-up --port-forward 8080:80,2222:22 14.3-RELEASE
+
+# Run VM in background mode
+freebsd-up --detach 14.3-RELEASE
+
 # Save ISO to specific location
 freebsd-up --output ./isos/freebsd.iso https://example.com/freebsd.iso
 
-# Combine multiple options with bridge networking and persistent storage
-freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-disk.qcow2 --disk-format qcow2 --size 50G --bridge br0 --output ./downloads/ 14.3-RELEASE
+# Combine multiple options with bridge networking, port forwarding, and persistent storage
+freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-disk.qcow2 --disk-format qcow2 --size 50G --bridge br0 --port-forward 8080:80,2222:22 --detach --output ./downloads/ 14.3-RELEASE
 
 # List all VMs (including stopped ones)
 freebsd-up ps --all
@@ -278,11 +319,23 @@ freebsd-up ps --all
 # Start a previously created VM
 freebsd-up start my-freebsd-vm
 
+# Start a VM in background mode
+freebsd-up start my-freebsd-vm --detach
+
 # Stop a running VM
 freebsd-up stop my-freebsd-vm
 
+# Restart a VM
+freebsd-up restart my-freebsd-vm
+
 # Get detailed information about a VM
 freebsd-up inspect my-freebsd-vm
+
+# View VM logs
+freebsd-up logs my-freebsd-vm
+
+# Follow VM logs in real-time
+freebsd-up logs my-freebsd-vm --follow
 
 # Remove a VM
 freebsd-up rm my-freebsd-vm
@@ -313,10 +366,12 @@ The script creates a VM with the following default specifications:
   `--image`)
 - **Network**: User mode networking with SSH forwarding (host:2222 → guest:22)
   or bridge networking with `--bridge`
+- **Port Forwarding**: Configurable port mappings with `--port-forward`
 - **Console**: Enhanced serial console via stdio with proper signal handling
 - **Default Version**: FreeBSD 14.3-RELEASE (when no arguments provided)
 - **State Management**: Persistent VM state stored in SQLite database
 - **Auto-naming**: VMs get unique names for easy management
+- **Background Mode**: Support for detached execution with `--detach`
 
 ### Networking Modes
 
@@ -375,10 +430,16 @@ freebsd-up --cpu qemu64
 freebsd-up --cpus 4
 
 # Add persistent storage
-freebsd-up --image ./freebsd-data.qcow2 --disk-format qcow2
+freebsd-up --image ./freebsd-data.qcow2 --disk-format qcow2 14.3-RELEASE
 
-# Combine options with persistent storage
-freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-storage.qcow2 --disk-format qcow2 14.3-RELEASE
+# Configure port forwarding for web server and SSH
+freebsd-up --port-forward 8080:80,2222:22 14.3-RELEASE
+
+# Run in background mode
+freebsd-up --detach 14.3-RELEASE
+
+# Combine options with persistent storage and port forwarding
+freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-storage.qcow2 --disk-format qcow2 --port-forward 8080:80,2222:22 --detach 14.3-RELEASE
 ```
 
 ### Creating Disk Images
@@ -466,7 +527,9 @@ freebsd-up/
     ├── utils.ts         # Core VM utilities and QEMU interface
     └── subcommands/     # CLI subcommand implementations
         ├── inspect.ts   # VM inspection command
+        ├── logs.ts      # VM logging command
         ├── ps.ts        # VM listing command
+        ├── restart.ts   # VM restart command
         ├── rm.ts        # VM removal command
         ├── start.ts     # VM start command
         └── stop.ts      # VM stop command
