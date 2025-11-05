@@ -2,8 +2,9 @@ import { createId } from "@paralleldrive/cuid2";
 import chalk from "chalk";
 import _ from "lodash";
 import Moniker from "moniker";
+import { LOGS_DIR } from "./constants.ts";
 import { generateRandomMacAddress } from "./network.ts";
-import { saveInstanceState } from "./state.ts";
+import { saveInstanceState, updateInstanceState } from "./state.ts";
 
 const DEFAULT_VERSION = "14.3-RELEASE";
 
@@ -16,6 +17,8 @@ export interface Options {
   diskFormat: string;
   size: string;
   bridge?: string;
+  portForward?: string;
+  detach?: boolean;
 }
 
 async function du(path: string): Promise<number> {
@@ -135,6 +138,28 @@ export async function setupFirmwareFilesIfNeeded(): Promise<string[]> {
   ];
 }
 
+export function setupPortForwardingArgs(portForward?: string): string {
+  if (!portForward) {
+    return "";
+  }
+
+  const forwards = portForward.split(",").map((pair) => {
+    const [hostPort, guestPort] = pair.split(":");
+    return `hostfwd=tcp::${hostPort}-:${guestPort}`;
+  });
+
+  return forwards.join(",");
+}
+
+export function setupNATNetworkArgs(portForward?: string): string {
+  if (!portForward) {
+    return "user,id=net0";
+  }
+
+  const portForwarding = setupPortForwardingArgs(portForward);
+  return `user,id=net0,${portForwarding}`;
+}
+
 export async function runQemu(
   isoPath: string | null,
   options: Options,
@@ -145,69 +170,123 @@ export async function runQemu(
     ? "qemu-system-aarch64"
     : "qemu-system-x86_64";
 
-  const cmd = new Deno.Command(options.bridge ? "sudo" : qemu, {
-    args: [
-      ..._.compact([options.bridge && qemu]),
-      ..._.compact(
-        Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
-      ),
-      ..._.compact(
-        Deno.build.arch === "aarch64" && ["-machine", "virt,highmem=on"],
-      ),
-      "-cpu",
-      options.cpu,
-      "-m",
-      options.memory,
-      "-smp",
-      options.cpus.toString(),
-      ..._.compact([isoPath && "-cdrom", isoPath]),
-      "-netdev",
-      options.bridge
-        ? `bridge,id=net0,br=${options.bridge}`
-        : "user,id=net0,hostfwd=tcp::2222-:22",
-      "-device",
-      `e1000,netdev=net0,mac=${macAddress}`,
-      "-nographic",
-      "-monitor",
-      "none",
-      "-chardev",
-      "stdio,id=con0,signal=off",
-      "-serial",
-      "chardev:con0",
-      ...await setupFirmwareFilesIfNeeded(),
-      ..._.compact(
-        options.image && [
-          "-drive",
-          `file=${options.image},format=${options.diskFormat},if=virtio`,
-        ],
-      ),
-    ],
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  }).spawn();
+  const qemuArgs = [
+    ..._.compact([options.bridge && qemu]),
+    ..._.compact(
+      Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+    ),
+    ..._.compact(
+      Deno.build.arch === "aarch64" && ["-machine", "virt,highmem=on"],
+    ),
+    "-cpu",
+    options.cpu,
+    "-m",
+    options.memory,
+    "-smp",
+    options.cpus.toString(),
+    ..._.compact([isoPath && "-cdrom", isoPath]),
+    "-netdev",
+    options.bridge
+      ? `bridge,id=net0,br=${options.bridge}`
+      : setupNATNetworkArgs(options.portForward),
+    "-device",
+    `e1000,netdev=net0,mac=${macAddress}`,
+    "-nographic",
+    "-monitor",
+    "none",
+    "-chardev",
+    "stdio,id=con0,signal=off",
+    "-serial",
+    "chardev:con0",
+    ...await setupFirmwareFilesIfNeeded(),
+    ..._.compact(
+      options.image && [
+        "-drive",
+        `file=${options.image},format=${options.diskFormat},if=virtio`,
+      ],
+    ),
+  ];
 
-  await saveInstanceState({
-    id: createId(),
-    name: Moniker.choose(),
-    bridge: options.bridge,
-    macAddress,
-    memory: options.memory,
-    cpus: options.cpus,
-    cpu: options.cpu,
-    diskSize: options.size,
-    diskFormat: options.diskFormat,
-    isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
-    drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
-    version: DEFAULT_VERSION,
-    status: "RUNNING",
-    pid: cmd.pid,
-  });
+  const name = Moniker.choose();
 
-  const status = await cmd.status;
+  if (options.detach) {
+    await Deno.mkdir(LOGS_DIR, { recursive: true });
+    const logPath = `${LOGS_DIR}/${name}.log`;
 
-  if (!status.success) {
-    Deno.exit(status.code);
+    const fullCommand = options.bridge
+      ? `sudo ${qemu} ${
+        qemuArgs.slice(1).join(" ")
+      } >> "${logPath}" 2>&1 & echo $!`
+      : `${qemu} ${qemuArgs.join(" ")} >> "${logPath}" 2>&1 & echo $!`;
+
+    const cmd = new Deno.Command("sh", {
+      args: ["-c", fullCommand],
+      stdin: "null",
+      stdout: "piped",
+    });
+
+    const { stdout } = await cmd.spawn().output();
+    const qemuPid = parseInt(new TextDecoder().decode(stdout).trim(), 10);
+
+    await saveInstanceState({
+      id: createId(),
+      name,
+      bridge: options.bridge,
+      macAddress,
+      memory: options.memory,
+      cpus: options.cpus,
+      cpu: options.cpu,
+      diskSize: options.size,
+      diskFormat: options.diskFormat,
+      portForward: options.portForward,
+      isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
+      drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
+      version: DEFAULT_VERSION,
+      status: "RUNNING",
+      pid: qemuPid,
+    });
+
+    console.log(
+      `Virtual machine ${name} started in background (PID: ${qemuPid})`,
+    );
+    console.log(`Logs will be written to: ${logPath}`);
+
+    // Exit successfully while keeping VM running in background
+    Deno.exit(0);
+  } else {
+    const cmd = new Deno.Command(options.bridge ? "sudo" : qemu, {
+      args: qemuArgs,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    })
+      .spawn();
+
+    await saveInstanceState({
+      id: createId(),
+      name,
+      bridge: options.bridge,
+      macAddress,
+      memory: options.memory,
+      cpus: options.cpus,
+      cpu: options.cpu,
+      diskSize: options.size,
+      diskFormat: options.diskFormat,
+      portForward: options.portForward,
+      isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
+      drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
+      version: DEFAULT_VERSION,
+      status: "RUNNING",
+      pid: cmd.pid,
+    });
+
+    const status = await cmd.status;
+
+    await updateInstanceState(name, "STOPPED");
+
+    if (!status.success) {
+      Deno.exit(status.code);
+    }
   }
 }
 
@@ -235,6 +314,51 @@ export function handleInput(input?: string): string {
   }
 
   return input;
+}
+
+export async function safeKillQemu(
+  pid: number,
+  useSudo: boolean = false,
+): Promise<boolean> {
+  const killArgs = useSudo
+    ? ["sudo", "kill", "-TERM", pid.toString()]
+    : ["kill", "-TERM", pid.toString()];
+
+  const termCmd = new Deno.Command(killArgs[0], {
+    args: killArgs.slice(1),
+    stdout: "null",
+    stderr: "null",
+  });
+
+  const termStatus = await termCmd.spawn().status;
+
+  if (termStatus.success) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    const checkCmd = new Deno.Command("kill", {
+      args: ["-0", pid.toString()],
+      stdout: "null",
+      stderr: "null",
+    });
+
+    const checkStatus = await checkCmd.spawn().status;
+    if (!checkStatus.success) {
+      return true;
+    }
+  }
+
+  const killKillArgs = useSudo
+    ? ["sudo", "kill", "-KILL", pid.toString()]
+    : ["kill", "-KILL", pid.toString()];
+
+  const killCmd = new Deno.Command(killKillArgs[0], {
+    args: killKillArgs.slice(1),
+    stdout: "null",
+    stderr: "null",
+  });
+
+  const killStatus = await killCmd.spawn().status;
+  return killStatus.success;
 }
 
 export async function createDriveImageIfNeeded(

@@ -3,7 +3,9 @@
 import { Command } from "@cliffy/command";
 import { createBridgeNetworkIfNeeded } from "./src/network.ts";
 import inspect from "./src/subcommands/inspect.ts";
+import logs from "./src/subcommands/logs.ts";
 import ps from "./src/subcommands/ps.ts";
+import restart from "./src/subcommands/restart.ts";
 import rm from "./src/subcommands/rm.ts";
 import start from "./src/subcommands/start.ts";
 import stop from "./src/subcommands/stop.ts";
@@ -54,6 +56,14 @@ if (import.meta.main) {
     .option(
       "-b, --bridge <name:string>",
       "Name of the network bridge to use for networking (e.g., br0)",
+    )
+    .option(
+      "-d, --detach",
+      "Run VM in the background and print VM name",
+    )
+    .option(
+      "-p, --port-forward <mappings:string>",
+      "Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)",
     )
     .example(
       "Default usage",
@@ -123,8 +133,9 @@ if (import.meta.main) {
     })
     .command("start", "Start a virtual machine")
     .arguments("<vm-name:string>")
-    .action(async (_options: unknown, vmName: string) => {
-      await start(vmName);
+    .option("--detach, -d", "Run VM in the background and print VM name")
+    .action(async (options: unknown, vmName: string) => {
+      await start(vmName, Boolean((options as { detach: boolean }).detach));
     })
     .command("stop", "Stop a virtual machine")
     .arguments("<vm-name:string>")
@@ -140,6 +151,17 @@ if (import.meta.main) {
     .arguments("<vm-name:string>")
     .action(async (_options: unknown, vmName: string) => {
       await rm(vmName);
+    })
+    .command("logs", "View logs of a virtual machine")
+    .option("--follow, -f", "Follow log output")
+    .arguments("<vm-name:string>")
+    .action(async (options: unknown, vmName: string) => {
+      await logs(vmName, Boolean((options as { follow: boolean }).follow));
+    })
+    .command("restart", "Restart a virtual machine")
+    .arguments("<vm-name:string>")
+    .action(async (_options: unknown, vmName: string) => {
+      await restart(vmName);
     })
     .parse(Deno.args);
 }

@@ -14,7 +14,11 @@ export async function updateInstanceState(
   pid?: number,
 ) {
   await ctx.db.updateTable("virtual_machines")
-    .set({ status, pid })
+    .set({
+      status,
+      pid,
+      updatedAt: new Date().toISOString(),
+    })
     .where((eb) =>
       eb.or([
         eb("name", "=", name),

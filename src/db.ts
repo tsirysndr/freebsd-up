@@ -35,6 +35,7 @@ export type VirtualMachine = {
   drivePath?: string;
   diskFormat: string;
   isoPath?: string;
+  portForward?: string;
   version: string;
   status: STATUS;
   pid: number;
@@ -68,7 +69,7 @@ migrations["001"] = {
       .addColumn("diskFormat", "varchar")
       .addColumn("isoPath", "varchar")
       .addColumn("status", "varchar", (col) => col.notNull())
-      .addColumn("pid", "integer", (col) => col.notNull().unique())
+      .addColumn("pid", "integer")
       .addColumn(
         "createdAt",
         "varchar",
@@ -84,6 +85,22 @@ migrations["001"] = {
 
   async down(db: Kysely<unknown>): Promise<void> {
     await db.schema.dropTable("virtual_machines").execute();
+  },
+};
+
+migrations["002"] = {
+  async up(db: Kysely<unknown>): Promise<void> {
+    await db.schema
+      .alterTable("virtual_machines")
+      .addColumn("portForward", "varchar")
+      .execute();
+  },
+
+  async down(db: Kysely<unknown>): Promise<void> {
+    await db.schema
+      .alterTable("virtual_machines")
+      .dropColumn("portForward")
+      .execute();
   },
 };
 
