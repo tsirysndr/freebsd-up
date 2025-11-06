@@ -133,7 +133,42 @@ if (import.meta.main) {
     })
     .command("start", "Start a virtual machine")
     .arguments("<vm-name:string>")
-    .option("--detach, -d", "Run VM in the background and print VM name")
+    .option("-c, --cpu <type:string>", "Type of CPU to emulate", {
+      default: "host",
+    })
+    .option("-C, --cpus <number:number>", "Number of CPU cores", {
+      default: 2,
+    })
+    .option("-m, --memory <size:string>", "Amount of memory for the VM", {
+      default: "2G",
+    })
+    .option("-i, --image <path:string>", "Path to VM disk image")
+    .option(
+      "--disk-format <format:string>",
+      "Disk image format (e.g., qcow2, raw)",
+      {
+        default: "raw",
+      },
+    )
+    .option(
+      "--size <size:string>",
+      "Size of the VM disk image to create if it doesn't exist (e.g., 20G)",
+      {
+        default: "20G",
+      },
+    )
+    .option(
+      "-b, --bridge <name:string>",
+      "Name of the network bridge to use for networking (e.g., br0)",
+    )
+    .option(
+      "-d, --detach",
+      "Run VM in the background and print VM name",
+    )
+    .option(
+      "-p, --port-forward <mappings:string>",
+      "Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)",
+    )
     .action(async (options: unknown, vmName: string) => {
       await start(vmName, Boolean((options as { detach: boolean }).detach));
     })

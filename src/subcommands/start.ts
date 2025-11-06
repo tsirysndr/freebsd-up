@@ -1,10 +1,12 @@
+import { parseFlags } from "@cliffy/flags";
 import _ from "lodash";
 import { LOGS_DIR } from "../constants.ts";
+import type { VirtualMachine } from "../db.ts";
 import { getInstanceState, updateInstanceState } from "../state.ts";
 import { setupFirmwareFilesIfNeeded, setupNATNetworkArgs } from "../utils.ts";
 
 export default async function (name: string, detach: boolean = false) {
-  const vm = await getInstanceState(name);
+  let vm = await getInstanceState(name);
   if (!vm) {
     console.error(
       `Virtual machine with name or ID ${name} not found.`,
@@ -13,6 +15,8 @@ export default async function (name: string, detach: boolean = false) {
   }
 
   console.log(`Starting virtual machine ${vm.name} (ID: ${vm.id})...`);
+
+  vm = mergeFlags(vm);
 
   const qemu = Deno.build.arch === "aarch64"
     ? "qemu-system-aarch64"
@@ -102,4 +106,19 @@ export default async function (name: string, detach: boolean = false) {
       Deno.exit(status.code);
     }
   }
+}
+
+function mergeFlags(vm: VirtualMachine): VirtualMachine {
+  const { flags } = parseFlags(Deno.args);
+  return {
+    ...vm,
+    memory: flags.memory ? String(flags.memory) : vm.memory,
+    cpus: flags.cpus ? Number(flags.cpus) : vm.cpus,
+    cpu: flags.cpu ? String(flags.cpu) : vm.cpu,
+    diskFormat: flags.diskFormat ? String(flags.diskFormat) : vm.diskFormat,
+    portForward: flags.portForward ? String(flags.portForward) : vm.portForward,
+    drivePath: flags.image ? String(flags.image) : vm.drivePath,
+    bridge: flags.bridge ? String(flags.bridge) : vm.bridge,
+    diskSize: flags.size ? String(flags.size) : vm.diskSize,
+  };
 }
