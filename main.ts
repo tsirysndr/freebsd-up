@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
 
 import { Command } from "@cliffy/command";
+import pkg from "./deno.json" with { type: "json" };
 import { createBridgeNetworkIfNeeded } from "./src/network.ts";
 import inspect from "./src/subcommands/inspect.ts";
 import logs from "./src/subcommands/logs.ts";
@@ -23,7 +24,7 @@ export * from "./src/mod.ts";
 if (import.meta.main) {
   await new Command()
     .name("freebsd-up")
-    .version("0.1.0")
+    .version(pkg.version)
     .description("Start a FreeBSD virtual machine using QEMU")
     .arguments(
       "[path-or-url-to-iso-or-version:string]",
