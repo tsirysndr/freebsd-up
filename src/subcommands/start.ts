@@ -1,5 +1,5 @@
 import { parseFlags } from "@cliffy/flags";
-import _ from "lodash";
+import _ from "@es-toolkit/es-toolkit/compat";
 import { LOGS_DIR } from "../constants.ts";
 import type { VirtualMachine } from "../db.ts";
 import { getInstanceState, updateInstanceState } from "../state.ts";
@@ -24,12 +24,8 @@ export default async function (name: string, detach: boolean = false) {
 
   const qemuArgs = [
     ..._.compact([vm.bridge && qemu]),
-    ..._.compact(
-      Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
-    ),
-    ..._.compact(
-      Deno.build.arch === "aarch64" && ["-machine", "virt,highmem=on"],
-    ),
+    ...Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+    ...Deno.build.arch === "aarch64" ? ["-machine", "virt,highmem=on"] : [],
     "-cpu",
     vm.cpu,
     "-m",

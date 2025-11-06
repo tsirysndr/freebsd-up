@@ -11,13 +11,14 @@
     "@cliffy/flags": "jsr:@cliffy/flags@^1.0.0-rc.8",
     "@cliffy/table": "jsr:@cliffy/table@^1.0.0-rc.8",
     "@db/sqlite": "jsr:@db/sqlite@^0.12.0",
+    "@es-toolkit/es-toolkit": "jsr:@es-toolkit/es-toolkit@^1.41.0",
     "@paralleldrive/cuid2": "npm:@paralleldrive/cuid2@^3.0.4",
     "@soapbox/kysely-deno-sqlite": "jsr:@soapbox/kysely-deno-sqlite@^2.2.0",
     "@std/assert": "jsr:@std/assert@1",
     "chalk": "npm:chalk@^5.6.2",
     "dayjs": "npm:dayjs@^1.11.19",
+    "effect": "npm:effect@^3.19.2",
     "kysely": "npm:kysely@0.27.6",
-    "lodash": "npm:lodash@^4.17.21",
     "moniker": "npm:moniker@^0.1.2"
   }
 }

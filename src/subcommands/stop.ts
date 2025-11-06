@@ -1,5 +1,5 @@
+import _ from "@es-toolkit/es-toolkit/compat";
 import chalk from "chalk";
-import _ from "lodash";
 import { getInstanceState, updateInstanceState } from "../state.ts";
 
 export default async function (name: string) {

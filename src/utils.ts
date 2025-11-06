@@ -1,6 +1,6 @@
+import _ from "@es-toolkit/es-toolkit/compat";
 import { createId } from "@paralleldrive/cuid2";
 import chalk from "chalk";
-import _ from "lodash";
 import Moniker from "moniker";
 import { EMPTY_DISK_THRESHOLD_KB, LOGS_DIR } from "./constants.ts";
 import { generateRandomMacAddress } from "./network.ts";
@@ -172,12 +172,8 @@ export async function runQemu(
 
   const qemuArgs = [
     ..._.compact([options.bridge && qemu]),
-    ..._.compact(
-      Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
-    ),
-    ..._.compact(
-      Deno.build.arch === "aarch64" && ["-machine", "virt,highmem=on"],
-    ),
+    ...Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+    ...Deno.build.arch === "aarch64" ? ["-machine", "virt,highmem=on"] : [],
     "-cpu",
     options.cpu,
     "-m",

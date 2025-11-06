@@ -1,5 +1,5 @@
+import _ from "@es-toolkit/es-toolkit/compat";
 import chalk from "chalk";
-import _ from "lodash";
 import { LOGS_DIR } from "../constants.ts";
 import { getInstanceState, updateInstanceState } from "../state.ts";
 import {
@@ -38,12 +38,8 @@ export default async function (name: string) {
 
   const qemuArgs = [
     ..._.compact([vm.bridge && qemu]),
-    ..._.compact(
-      Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
-    ),
-    ..._.compact(
-      Deno.build.arch === "aarch64" && ["-machine", "virt,highmem=on"],
-    ),
+    ...Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+    ...Deno.build.arch === "aarch64" ? ["-machine", "virt,highmem=on"] : [],
     "-cpu",
     vm.cpu,
     "-m",
