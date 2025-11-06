@@ -1,56 +1,75 @@
+import { Data, Effect } from "effect";
 import { ctx } from "./context.ts";
 import type { VirtualMachine } from "./db.ts";
 import type { STATUS } from "./types.ts";
 
-export async function saveInstanceState(vm: VirtualMachine) {
-  await ctx.db.insertInto("virtual_machines")
-    .values(vm)
-    .execute();
-}
+export class DbError extends Data.TaggedError("DatabaseError")<{
+  cause?: unknown;
+}> {}
 
-export async function updateInstanceState(
+export const saveInstanceState = (
+  vm: VirtualMachine,
+) =>
+  Effect.tryPromise({
+    try: () =>
+      ctx.db.insertInto("virtual_machines")
+        .values(vm)
+        .execute(),
+    catch: (error) => new DbError({ cause: error }),
+  });
+
+export const updateInstanceState = (
   name: string,
   status: STATUS,
   pid?: number,
-) {
-  await ctx.db.updateTable("virtual_machines")
-    .set({
-      status,
-      pid,
-      updatedAt: new Date().toISOString(),
-    })
-    .where((eb) =>
-      eb.or([
-        eb("name", "=", name),
-        eb("id", "=", name),
-      ])
-    )
-    .execute();
-}
+) =>
+  Effect.tryPromise({
+    try: () =>
+      ctx.db.updateTable("virtual_machines")
+        .set({
+          status,
+          pid,
+          updatedAt: new Date().toISOString(),
+        })
+        .where((eb) =>
+          eb.or([
+            eb("name", "=", name),
+            eb("id", "=", name),
+          ])
+        )
+        .execute(),
+    catch: (error) => new DbError({ cause: error }),
+  });
 
-export async function removeInstanceState(name: string) {
-  await ctx.db.deleteFrom("virtual_machines")
-    .where((eb) =>
-      eb.or([
-        eb("name", "=", name),
-        eb("id", "=", name),
-      ])
-    )
-    .execute();
-}
-
-export async function getInstanceState(
+export const removeInstanceState = (
   name: string,
-): Promise<VirtualMachine | undefined> {
-  const vm = await ctx.db.selectFrom("virtual_machines")
-    .selectAll()
-    .where((eb) =>
-      eb.or([
-        eb("name", "=", name),
-        eb("id", "=", name),
-      ])
-    )
-    .executeTakeFirst();
+) =>
+  Effect.tryPromise({
+    try: () =>
+      ctx.db.deleteFrom("virtual_machines")
+        .where((eb) =>
+          eb.or([
+            eb("name", "=", name),
+            eb("id", "=", name),
+          ])
+        )
+        .execute(),
+    catch: (error) => new DbError({ cause: error }),
+  });
 
-  return vm;
-}
+export const getInstanceState = (
+  name: string,
+): Effect.Effect<VirtualMachine | undefined, DbError, never> =>
+  Effect.tryPromise({
+    try: () =>
+      ctx.db.selectFrom("virtual_machines")
+        .selectAll()
+        .where((eb) =>
+          eb.or([
+            eb("name", "=", name),
+            eb("id", "=", name),
+          ])
+        )
+        .executeTakeFirst(),
+    catch: (error) => new DbError({ cause: error }),
+  });

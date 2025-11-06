@@ -1,28 +1,42 @@
 import { parseFlags } from "@cliffy/flags";
 import _ from "@es-toolkit/es-toolkit/compat";
+import { Data, Effect, pipe } from "effect";
 import { LOGS_DIR } from "../constants.ts";
 import type { VirtualMachine } from "../db.ts";
 import { getInstanceState, updateInstanceState } from "../state.ts";
 import { setupFirmwareFilesIfNeeded, setupNATNetworkArgs } from "../utils.ts";
 
-export default async function (name: string, detach: boolean = false) {
-  let vm = await getInstanceState(name);
-  if (!vm) {
-    console.error(
-      `Virtual machine with name or ID ${name} not found.`,
-    );
-    Deno.exit(1);
-  }
+class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
+  name: string;
+}> {}
 
-  console.log(`Starting virtual machine ${vm.name} (ID: ${vm.id})...`);
+class CommandError extends Data.TaggedError("CommandError")<{
+  cause?: unknown;
+}> {}
 
-  vm = mergeFlags(vm);
+const findVm = (name: string) =>
+  pipe(
+    getInstanceState(name),
+    Effect.flatMap((vm) =>
+      vm ? Effect.succeed(vm) : Effect.fail(new VmNotFoundError({ name }))
+    ),
+  );
 
+const logStarting = (vm: VirtualMachine) =>
+  Effect.sync(() => {
+    console.log(`Starting virtual machine ${vm.name} (ID: ${vm.id})...`);
+  });
+
+const applyFlags = (vm: VirtualMachine) => Effect.succeed(mergeFlags(vm));
+
+const setupFirmware = () => setupFirmwareFilesIfNeeded();
+
+const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
   const qemu = Deno.build.arch === "aarch64"
     ? "qemu-system-aarch64"
     : "qemu-system-x86_64";
 
-  const qemuArgs = [
+  return Effect.succeed([
     ..._.compact([vm.bridge && qemu]),
     ...Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
     ...Deno.build.arch === "aarch64" ? ["-machine", "virt,highmem=on"] : [],
@@ -46,61 +60,167 @@ export default async function (name: string, detach: boolean = false) {
     "stdio,id=con0,signal=off",
     "-serial",
     "chardev:con0",
-    ...await setupFirmwareFilesIfNeeded(),
+    ...firmwareArgs,
     ..._.compact(
       vm.drivePath && [
         "-drive",
         `file=${vm.drivePath},format=${vm.diskFormat},if=virtio`,
       ],
     ),
-  ];
+  ]);
+};
 
-  if (detach) {
-    await Deno.mkdir(LOGS_DIR, { recursive: true });
-    const logPath = `${LOGS_DIR}/${vm.name}.log`;
+const createLogsDir = () =>
+  Effect.tryPromise({
+    try: () => Deno.mkdir(LOGS_DIR, { recursive: true }),
+    catch: (error) => new CommandError({ cause: error }),
+  });
 
-    const fullCommand = vm.bridge
-      ? `sudo ${qemu} ${
-        qemuArgs.slice(1).join(" ")
-      } >> "${logPath}" 2>&1 & echo $!`
-      : `${qemu} ${qemuArgs.join(" ")} >> "${logPath}" 2>&1 & echo $!`;
+const startDetachedQemu = (
+  name: string,
+  vm: VirtualMachine,
+  qemuArgs: string[],
+) => {
+  const qemu = Deno.build.arch === "aarch64"
+    ? "qemu-system-aarch64"
+    : "qemu-system-x86_64";
 
-    const cmd = new Deno.Command("sh", {
-      args: ["-c", fullCommand],
-      stdin: "null",
-      stdout: "piped",
-    });
+  const logPath = `${LOGS_DIR}/${vm.name}.log`;
 
-    const { stdout } = await cmd.spawn().output();
-    const qemuPid = parseInt(new TextDecoder().decode(stdout).trim(), 10);
+  const fullCommand = vm.bridge
+    ? `sudo ${qemu} ${
+      qemuArgs.slice(1).join(" ")
+    } >> "${logPath}" 2>&1 & echo $!`
+    : `${qemu} ${qemuArgs.join(" ")} >> "${logPath}" 2>&1 & echo $!`;
 
-    await updateInstanceState(name, "RUNNING", qemuPid);
+  return Effect.tryPromise({
+    try: async () => {
+      const cmd = new Deno.Command("sh", {
+        args: ["-c", fullCommand],
+        stdin: "null",
+        stdout: "piped",
+      });
 
+      const { stdout } = await cmd.spawn().output();
+      const qemuPid = parseInt(new TextDecoder().decode(stdout).trim(), 10);
+      return { qemuPid, logPath };
+    },
+    catch: (error) => new CommandError({ cause: error }),
+  }).pipe(
+    Effect.flatMap(({ qemuPid, logPath }) =>
+      pipe(
+        updateInstanceState(name, "RUNNING", qemuPid),
+        Effect.map(() => ({ vm, qemuPid, logPath })),
+      )
+    ),
+  );
+};
+
+const logDetachedSuccess = (
+  { vm, qemuPid, logPath }: {
+    vm: VirtualMachine;
+    qemuPid: number;
+    logPath: string;
+  },
+) =>
+  Effect.sync(() => {
     console.log(
       `Virtual machine ${vm.name} started in background (PID: ${qemuPid})`,
     );
     console.log(`Logs will be written to: ${logPath}`);
+  });
 
-    // Exit successfully while keeping VM running in background
-    Deno.exit(0);
-  } else {
-    const cmd = new Deno.Command(vm.bridge ? "sudo" : qemu, {
-      args: qemuArgs,
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
-    });
+const startInteractiveQemu = (
+  name: string,
+  vm: VirtualMachine,
+  qemuArgs: string[],
+) => {
+  const qemu = Deno.build.arch === "aarch64"
+    ? "qemu-system-aarch64"
+    : "qemu-system-x86_64";
 
-    const child = cmd.spawn();
-    await updateInstanceState(name, "RUNNING", child.pid);
+  return Effect.tryPromise({
+    try: async () => {
+      const cmd = new Deno.Command(vm.bridge ? "sudo" : qemu, {
+        args: qemuArgs,
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      });
 
-    const status = await child.status;
+      const child = cmd.spawn();
 
-    await updateInstanceState(name, "STOPPED", child.pid);
+      await Effect.runPromise(updateInstanceState(name, "RUNNING", child.pid));
 
-    if (!status.success) {
-      Deno.exit(status.code);
+      const status = await child.status;
+
+      await Effect.runPromise(updateInstanceState(name, "STOPPED", child.pid));
+
+      return status;
+    },
+    catch: (error) => new CommandError({ cause: error }),
+  });
+};
+
+const handleError = (error: VmNotFoundError | CommandError | Error) =>
+  Effect.sync(() => {
+    if (error instanceof VmNotFoundError) {
+      console.error(
+        `Virtual machine with name or ID ${error.name} not found.`,
+      );
+    } else {
+      console.error(`An error occurred: ${error}`);
     }
+    Deno.exit(1);
+  });
+
+const startDetachedEffect = (name: string) =>
+  pipe(
+    findVm(name),
+    Effect.tap(logStarting),
+    Effect.flatMap(applyFlags),
+    Effect.flatMap((vm) =>
+      pipe(
+        setupFirmware(),
+        Effect.flatMap((firmwareArgs) => buildQemuArgs(vm, firmwareArgs)),
+        Effect.flatMap((qemuArgs) =>
+          pipe(
+            createLogsDir(),
+            Effect.flatMap(() => startDetachedQemu(name, vm, qemuArgs)),
+            Effect.tap(logDetachedSuccess),
+            Effect.map(() => 0), // Exit code 0
+          )
+        ),
+      )
+    ),
+    Effect.catchAll(handleError),
+  );
+
+const startInteractiveEffect = (name: string) =>
+  pipe(
+    findVm(name),
+    Effect.tap(logStarting),
+    Effect.flatMap(applyFlags),
+    Effect.flatMap((vm) =>
+      pipe(
+        setupFirmware(),
+        Effect.flatMap((firmwareArgs) => buildQemuArgs(vm, firmwareArgs)),
+        Effect.flatMap((qemuArgs) => startInteractiveQemu(name, vm, qemuArgs)),
+        Effect.map((status) => status.success ? 0 : (status.code || 1)),
+      )
+    ),
+    Effect.catchAll(handleError),
+  );
+
+export default async function (name: string, detach: boolean = false) {
+  const exitCode = await Effect.runPromise(
+    detach ? startDetachedEffect(name) : startInteractiveEffect(name),
+  );
+
+  if (detach) {
+    Deno.exit(exitCode);
+  } else if (exitCode !== 0) {
+    Deno.exit(exitCode);
   }
 }
 

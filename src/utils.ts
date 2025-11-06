@@ -1,6 +1,7 @@
 import _ from "@es-toolkit/es-toolkit/compat";
 import { createId } from "@paralleldrive/cuid2";
 import chalk from "chalk";
+import { Data, Effect } from "effect";
 import Moniker from "moniker";
 import { EMPTY_DISK_THRESHOLD_KB, LOGS_DIR } from "./constants.ts";
 import { generateRandomMacAddress } from "./network.ts";
@@ -21,72 +22,107 @@ export interface Options {
   detach?: boolean;
 }
 
-async function du(path: string): Promise<number> {
-  const cmd = new Deno.Command("du", {
-    args: [path],
-    stdout: "piped",
-    stderr: "inherit",
+class LogCommandError extends Data.TaggedError("LogCommandError")<{
+  cause?: unknown;
+}> {}
+
+const du = (path: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const cmd = new Deno.Command("du", {
+        args: [path],
+        stdout: "piped",
+        stderr: "inherit",
+      });
+
+      const { stdout } = await cmd.spawn().output();
+      const output = new TextDecoder().decode(stdout).trim();
+      const size = parseInt(output.split("\t")[0], 10);
+      return size;
+    },
+    catch: (error) => new LogCommandError({ cause: error }),
   });
 
-  const { stdout } = await cmd.spawn().output();
-  const output = new TextDecoder().decode(stdout).trim();
-  const size = parseInt(output.split("\t")[0], 10);
-  return size;
-}
+export const emptyDiskImage = (path: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      if (!await Deno.stat(path).catch(() => false)) {
+        return true;
+      }
+      return false;
+    },
+    catch: (error) => new LogCommandError({ cause: error }),
+  }).pipe(
+    Effect.flatMap((exists) =>
+      exists ? Effect.succeed(true) : du(path).pipe(
+        Effect.map((size) => size < EMPTY_DISK_THRESHOLD_KB),
+      )
+    ),
+  );
 
-export async function emptyDiskImage(path: string): Promise<boolean> {
-  if (!await Deno.stat(path).catch(() => false)) {
-    return true;
-  }
-
-  const size = await du(path);
-  return size < EMPTY_DISK_THRESHOLD_KB;
-}
-
-export async function downloadIso(
+export const downloadIso = (
   url: string,
   options: Options,
-): Promise<string | null> {
-  const filename = url.split("/").pop()!;
-  const outputPath = options.output ?? filename;
+) =>
+  Effect.gen(function* () {
+    const filename = url.split("/").pop()!;
+    const outputPath = options.output ?? filename;
 
-  if (options.image && await Deno.stat(options.image).catch(() => false)) {
-    const driveSize = await du(options.image);
-    if (driveSize > EMPTY_DISK_THRESHOLD_KB) {
+    if (options.image) {
+      const imageExists = yield* Effect.tryPromise({
+        try: () =>
+          Deno.stat(options.image!).then(() => true).catch(() => false),
+        catch: (error) => new LogCommandError({ cause: error }),
+      });
+
+      if (imageExists) {
+        const driveSize = yield* du(options.image);
+        if (driveSize > EMPTY_DISK_THRESHOLD_KB) {
+          console.log(
+            chalk.yellowBright(
+              `Drive image ${options.image} is not empty (size: ${driveSize} KB), skipping ISO download to avoid overwriting existing data.`,
+            ),
+          );
+          return null;
+        }
+      }
+    }
+
+    const outputExists = yield* Effect.tryPromise({
+      try: () => Deno.stat(outputPath).then(() => true).catch(() => false),
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
+
+    if (outputExists) {
       console.log(
         chalk.yellowBright(
-          `Drive image ${options.image} is not empty (size: ${driveSize} KB), skipping ISO download to avoid overwriting existing data.`,
+          `File ${outputPath} already exists, skipping download.`,
         ),
       );
-      return null;
+      return outputPath;
     }
-  }
 
-  if (await Deno.stat(outputPath).catch(() => false)) {
-    console.log(
-      chalk.yellowBright(
-        `File ${outputPath} already exists, skipping download.`,
-      ),
-    );
+    yield* Effect.tryPromise({
+      try: async () => {
+        const cmd = new Deno.Command("curl", {
+          args: ["-L", "-o", outputPath, url],
+          stdin: "inherit",
+          stdout: "inherit",
+          stderr: "inherit",
+        });
+
+        const status = await cmd.spawn().status;
+        if (!status.success) {
+          console.error(chalk.redBright("Failed to download ISO image."));
+          Deno.exit(status.code);
+        }
+      },
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
+
+    console.log(chalk.greenBright(`Downloaded ISO to ${outputPath}`));
     return outputPath;
-  }
-
-  const cmd = new Deno.Command("curl", {
-    args: ["-L", "-o", outputPath, url],
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
   });
-
-  const status = await cmd.spawn().status;
-  if (!status.success) {
-    console.error(chalk.redBright("Failed to download ISO image."));
-    Deno.exit(status.code);
-  }
-
-  console.log(chalk.greenBright(`Downloaded ISO to ${outputPath}`));
-  return outputPath;
-}
 
 export function constructDownloadUrl(version: string): string {
   let arch = "amd64";
@@ -100,43 +136,53 @@ export function constructDownloadUrl(version: string): string {
   }/FreeBSD-${version}-${arch}-disc1.iso`;
 }
 
-export async function setupFirmwareFilesIfNeeded(): Promise<string[]> {
-  if (Deno.build.arch !== "aarch64") {
-    return [];
-  }
+export const setupFirmwareFilesIfNeeded = () =>
+  Effect.gen(function* () {
+    if (Deno.build.arch !== "aarch64") {
+      return [];
+    }
 
-  const brewCmd = new Deno.Command("brew", {
-    args: ["--prefix", "qemu"],
-    stdout: "piped",
-    stderr: "inherit",
+    const { stdout, success } = yield* Effect.tryPromise({
+      try: async () => {
+        const brewCmd = new Deno.Command("brew", {
+          args: ["--prefix", "qemu"],
+          stdout: "piped",
+          stderr: "inherit",
+        });
+        return await brewCmd.spawn().output();
+      },
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
+
+    if (!success) {
+      console.error(
+        chalk.redBright(
+          "Failed to get QEMU prefix from Homebrew. Ensure QEMU is installed via Homebrew.",
+        ),
+      );
+      Deno.exit(1);
+    }
+
+    const brewPrefix = new TextDecoder().decode(stdout).trim();
+    const edk2Aarch64 = `${brewPrefix}/share/qemu/edk2-aarch64-code.fd`;
+    const edk2VarsAarch64 = "./edk2-arm-vars.fd";
+
+    yield* Effect.tryPromise({
+      try: () =>
+        Deno.copyFile(
+          `${brewPrefix}/share/qemu/edk2-arm-vars.fd`,
+          edk2VarsAarch64,
+        ),
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
+
+    return [
+      "-drive",
+      `if=pflash,format=raw,file=${edk2Aarch64},readonly=on`,
+      "-drive",
+      `if=pflash,format=raw,file=${edk2VarsAarch64}`,
+    ];
   });
-  const { stdout, success } = await brewCmd.spawn().output();
-
-  if (!success) {
-    console.error(
-      chalk.redBright(
-        "Failed to get QEMU prefix from Homebrew. Ensure QEMU is installed via Homebrew.",
-      ),
-    );
-    Deno.exit(1);
-  }
-
-  const brewPrefix = new TextDecoder().decode(stdout).trim();
-  const edk2Aarch64 = `${brewPrefix}/share/qemu/edk2-aarch64-code.fd`;
-  const edk2VarsAarch64 = "./edk2-arm-vars.fd";
-
-  await Deno.copyFile(
-    `${brewPrefix}/share/qemu/edk2-arm-vars.fd`,
-    edk2VarsAarch64,
-  );
-
-  return [
-    "-drive",
-    `if=pflash,format=raw,file=${edk2Aarch64},readonly=on`,
-    "-drive",
-    `if=pflash,format=raw,file=${edk2VarsAarch64}`,
-  ];
-}
 
 export function setupPortForwardingArgs(portForward?: string): string {
   if (!portForward) {
@@ -160,131 +206,146 @@ export function setupNATNetworkArgs(portForward?: string): string {
   return `user,id=net0,${portForwarding}`;
 }
 
-export async function runQemu(
+export const runQemu = (
   isoPath: string | null,
   options: Options,
-): Promise<void> {
-  const macAddress = generateRandomMacAddress();
+) =>
+  Effect.gen(function* () {
+    const macAddress = yield* generateRandomMacAddress();
 
-  const qemu = Deno.build.arch === "aarch64"
-    ? "qemu-system-aarch64"
-    : "qemu-system-x86_64";
+    const qemu = Deno.build.arch === "aarch64"
+      ? "qemu-system-aarch64"
+      : "qemu-system-x86_64";
 
-  const qemuArgs = [
-    ..._.compact([options.bridge && qemu]),
-    ...Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
-    ...Deno.build.arch === "aarch64" ? ["-machine", "virt,highmem=on"] : [],
-    "-cpu",
-    options.cpu,
-    "-m",
-    options.memory,
-    "-smp",
-    options.cpus.toString(),
-    ..._.compact([isoPath && "-cdrom", isoPath]),
-    "-netdev",
-    options.bridge
-      ? `bridge,id=net0,br=${options.bridge}`
-      : setupNATNetworkArgs(options.portForward),
-    "-device",
-    `e1000,netdev=net0,mac=${macAddress}`,
-    "-nographic",
-    "-monitor",
-    "none",
-    "-chardev",
-    "stdio,id=con0,signal=off",
-    "-serial",
-    "chardev:con0",
-    ...await setupFirmwareFilesIfNeeded(),
-    ..._.compact(
-      options.image && [
-        "-drive",
-        `file=${options.image},format=${options.diskFormat},if=virtio`,
-      ],
-    ),
-  ];
+    const firmwareFiles = yield* setupFirmwareFilesIfNeeded();
 
-  const name = Moniker.choose();
+    const qemuArgs = [
+      ..._.compact([options.bridge && qemu]),
+      ...Deno.build.os === "darwin" ? ["-accel", "hvf"] : ["-enable-kvm"],
+      ...Deno.build.arch === "aarch64" ? ["-machine", "virt,highmem=on"] : [],
+      "-cpu",
+      options.cpu,
+      "-m",
+      options.memory,
+      "-smp",
+      options.cpus.toString(),
+      ..._.compact([isoPath && "-cdrom", isoPath]),
+      "-netdev",
+      options.bridge
+        ? `bridge,id=net0,br=${options.bridge}`
+        : setupNATNetworkArgs(options.portForward),
+      "-device",
+      `e1000,netdev=net0,mac=${macAddress}`,
+      "-nographic",
+      "-monitor",
+      "none",
+      "-chardev",
+      "stdio,id=con0,signal=off",
+      "-serial",
+      "chardev:con0",
+      ...firmwareFiles,
+      ..._.compact(
+        options.image && [
+          "-drive",
+          `file=${options.image},format=${options.diskFormat},if=virtio`,
+        ],
+      ),
+    ];
 
-  if (options.detach) {
-    await Deno.mkdir(LOGS_DIR, { recursive: true });
-    const logPath = `${LOGS_DIR}/${name}.log`;
+    const name = Moniker.choose();
 
-    const fullCommand = options.bridge
-      ? `sudo ${qemu} ${
-        qemuArgs.slice(1).join(" ")
-      } >> "${logPath}" 2>&1 & echo $!`
-      : `${qemu} ${qemuArgs.join(" ")} >> "${logPath}" 2>&1 & echo $!`;
+    if (options.detach) {
+      yield* Effect.tryPromise({
+        try: () => Deno.mkdir(LOGS_DIR, { recursive: true }),
+        catch: (error) => new LogCommandError({ cause: error }),
+      });
 
-    const cmd = new Deno.Command("sh", {
-      args: ["-c", fullCommand],
-      stdin: "null",
-      stdout: "piped",
-    });
+      const logPath = `${LOGS_DIR}/${name}.log`;
 
-    const { stdout } = await cmd.spawn().output();
-    const qemuPid = parseInt(new TextDecoder().decode(stdout).trim(), 10);
+      const fullCommand = options.bridge
+        ? `sudo ${qemu} ${
+          qemuArgs.slice(1).join(" ")
+        } >> "${logPath}" 2>&1 & echo $!`
+        : `${qemu} ${qemuArgs.join(" ")} >> "${logPath}" 2>&1 & echo $!`;
 
-    await saveInstanceState({
-      id: createId(),
-      name,
-      bridge: options.bridge,
-      macAddress,
-      memory: options.memory,
-      cpus: options.cpus,
-      cpu: options.cpu,
-      diskSize: options.size,
-      diskFormat: options.diskFormat,
-      portForward: options.portForward,
-      isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
-      drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
-      version: DEFAULT_VERSION,
-      status: "RUNNING",
-      pid: qemuPid,
-    });
+      const { stdout } = yield* Effect.tryPromise({
+        try: async () => {
+          const cmd = new Deno.Command("sh", {
+            args: ["-c", fullCommand],
+            stdin: "null",
+            stdout: "piped",
+          });
+          return await cmd.spawn().output();
+        },
+        catch: (error) => new LogCommandError({ cause: error }),
+      });
 
-    console.log(
-      `Virtual machine ${name} started in background (PID: ${qemuPid})`,
-    );
-    console.log(`Logs will be written to: ${logPath}`);
+      const qemuPid = parseInt(new TextDecoder().decode(stdout).trim(), 10);
 
-    // Exit successfully while keeping VM running in background
-    Deno.exit(0);
-  } else {
-    const cmd = new Deno.Command(options.bridge ? "sudo" : qemu, {
-      args: qemuArgs,
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
-    })
-      .spawn();
+      yield* saveInstanceState({
+        id: createId(),
+        name,
+        bridge: options.bridge,
+        macAddress,
+        memory: options.memory,
+        cpus: options.cpus,
+        cpu: options.cpu,
+        diskSize: options.size,
+        diskFormat: options.diskFormat,
+        portForward: options.portForward,
+        isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
+        drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
+        version: DEFAULT_VERSION,
+        status: "RUNNING",
+        pid: qemuPid,
+      });
 
-    await saveInstanceState({
-      id: createId(),
-      name,
-      bridge: options.bridge,
-      macAddress,
-      memory: options.memory,
-      cpus: options.cpus,
-      cpu: options.cpu,
-      diskSize: options.size,
-      diskFormat: options.diskFormat,
-      portForward: options.portForward,
-      isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
-      drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
-      version: DEFAULT_VERSION,
-      status: "RUNNING",
-      pid: cmd.pid,
-    });
+      console.log(
+        `Virtual machine ${name} started in background (PID: ${qemuPid})`,
+      );
+      console.log(`Logs will be written to: ${logPath}`);
 
-    const status = await cmd.status;
+      // Exit successfully while keeping VM running in background
+      Deno.exit(0);
+    } else {
+      const cmd = new Deno.Command(options.bridge ? "sudo" : qemu, {
+        args: qemuArgs,
+        stdin: "inherit",
+        stdout: "inherit",
+        stderr: "inherit",
+      })
+        .spawn();
 
-    await updateInstanceState(name, "STOPPED");
+      yield* saveInstanceState({
+        id: createId(),
+        name,
+        bridge: options.bridge,
+        macAddress,
+        memory: options.memory,
+        cpus: options.cpus,
+        cpu: options.cpu,
+        diskSize: options.size,
+        diskFormat: options.diskFormat,
+        portForward: options.portForward,
+        isoPath: isoPath ? Deno.realPathSync(isoPath) : undefined,
+        drivePath: options.image ? Deno.realPathSync(options.image) : undefined,
+        version: DEFAULT_VERSION,
+        status: "RUNNING",
+        pid: cmd.pid,
+      });
 
-    if (!status.success) {
-      Deno.exit(status.code);
+      const status = yield* Effect.tryPromise({
+        try: () => cmd.status,
+        catch: (error) => new LogCommandError({ cause: error }),
+      });
+
+      yield* updateInstanceState(name, "STOPPED");
+
+      if (!status.success) {
+        Deno.exit(status.code);
+      }
     }
-  }
-}
+  });
 
 export function handleInput(input?: string): string {
   if (!input) {
@@ -312,79 +373,108 @@ export function handleInput(input?: string): string {
   return input;
 }
 
-export async function safeKillQemu(
+export const safeKillQemu = (
   pid: number,
   useSudo: boolean = false,
-): Promise<boolean> {
-  const killArgs = useSudo
-    ? ["sudo", "kill", "-TERM", pid.toString()]
-    : ["kill", "-TERM", pid.toString()];
+) =>
+  Effect.gen(function* () {
+    const killArgs = useSudo
+      ? ["sudo", "kill", "-TERM", pid.toString()]
+      : ["kill", "-TERM", pid.toString()];
 
-  const termCmd = new Deno.Command(killArgs[0], {
-    args: killArgs.slice(1),
-    stdout: "null",
-    stderr: "null",
-  });
-
-  const termStatus = await termCmd.spawn().status;
-
-  if (termStatus.success) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    const checkCmd = new Deno.Command("kill", {
-      args: ["-0", pid.toString()],
-      stdout: "null",
-      stderr: "null",
+    const termStatus = yield* Effect.tryPromise({
+      try: async () => {
+        const termCmd = new Deno.Command(killArgs[0], {
+          args: killArgs.slice(1),
+          stdout: "null",
+          stderr: "null",
+        });
+        return await termCmd.spawn().status;
+      },
+      catch: (error) => new LogCommandError({ cause: error }),
     });
 
-    const checkStatus = await checkCmd.spawn().status;
-    if (!checkStatus.success) {
-      return true;
+    if (termStatus.success) {
+      yield* Effect.tryPromise({
+        try: () => new Promise((resolve) => setTimeout(resolve, 3000)),
+        catch: (error) => new LogCommandError({ cause: error }),
+      });
+
+      const checkStatus = yield* Effect.tryPromise({
+        try: async () => {
+          const checkCmd = new Deno.Command("kill", {
+            args: ["-0", pid.toString()],
+            stdout: "null",
+            stderr: "null",
+          });
+          return await checkCmd.spawn().status;
+        },
+        catch: (error) => new LogCommandError({ cause: error }),
+      });
+
+      if (!checkStatus.success) {
+        return true;
+      }
     }
-  }
 
-  const killKillArgs = useSudo
-    ? ["sudo", "kill", "-KILL", pid.toString()]
-    : ["kill", "-KILL", pid.toString()];
+    const killKillArgs = useSudo
+      ? ["sudo", "kill", "-KILL", pid.toString()]
+      : ["kill", "-KILL", pid.toString()];
 
-  const killCmd = new Deno.Command(killKillArgs[0], {
-    args: killKillArgs.slice(1),
-    stdout: "null",
-    stderr: "null",
+    const killStatus = yield* Effect.tryPromise({
+      try: async () => {
+        const killCmd = new Deno.Command(killKillArgs[0], {
+          args: killKillArgs.slice(1),
+          stdout: "null",
+          stderr: "null",
+        });
+        return await killCmd.spawn().status;
+      },
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
+
+    return killStatus.success;
   });
 
-  const killStatus = await killCmd.spawn().status;
-  return killStatus.success;
-}
-
-export async function createDriveImageIfNeeded(
+export const createDriveImageIfNeeded = (
   {
     image: path,
     diskFormat: format,
     size,
   }: Options,
-): Promise<void> {
-  if (await Deno.stat(path!).catch(() => false)) {
-    console.log(
-      chalk.yellowBright(
-        `Drive image ${path} already exists, skipping creation.`,
-      ),
-    );
-    return;
-  }
+) =>
+  Effect.gen(function* () {
+    const pathExists = yield* Effect.tryPromise({
+      try: () => Deno.stat(path!).then(() => true).catch(() => false),
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
 
-  const cmd = new Deno.Command("qemu-img", {
-    args: ["create", "-f", format, path!, size!],
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
+    if (pathExists) {
+      console.log(
+        chalk.yellowBright(
+          `Drive image ${path} already exists, skipping creation.`,
+        ),
+      );
+      return;
+    }
+
+    const status = yield* Effect.tryPromise({
+      try: async () => {
+        const cmd = new Deno.Command("qemu-img", {
+          args: ["create", "-f", format, path!, size!],
+          stdin: "inherit",
+          stdout: "inherit",
+          stderr: "inherit",
+        });
+        return await cmd.spawn().status;
+      },
+      catch: (error) => new LogCommandError({ cause: error }),
+    });
+
+    if (!status.success) {
+      console.error(chalk.redBright("Failed to create drive image."));
+      Deno.exit(status.code);
+    }
+
+    console.log(chalk.greenBright(`Created drive image at ${path}`));
   });
-
-  const status = await cmd.spawn().status;
-  if (!status.success) {
-    console.error(chalk.redBright("Failed to create drive image."));
-    Deno.exit(status.code);
-  }
-
-  console.log(chalk.greenBright(`Created drive image at ${path}`));
-}
