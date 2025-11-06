@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
 
 import { Command } from "@cliffy/command";
+import { Effect } from "effect";
 import pkg from "./deno.json" with { type: "json" };
 import { createBridgeNetworkIfNeeded } from "./src/network.ts";
 import inspect from "./src/subcommands/inspect.ts";
@@ -103,29 +104,36 @@ if (import.meta.main) {
       "freebsd-up inspect my-vm",
     )
     .action(async (options: Options, input?: string) => {
-      const resolvedInput = handleInput(input);
-      let isoPath: string | null = resolvedInput;
+      const program = Effect.gen(function* () {
+        const resolvedInput = handleInput(input);
+        let isoPath: string | null = resolvedInput;
 
-      if (
-        resolvedInput.startsWith("https://") ||
-        resolvedInput.startsWith("http://")
-      ) {
-        isoPath = await downloadIso(resolvedInput, options);
-      }
+        if (
+          resolvedInput.startsWith("https://") ||
+          resolvedInput.startsWith("http://")
+        ) {
+          isoPath = yield* downloadIso(resolvedInput, options);
+        }
 
-      if (options.image) {
-        await createDriveImageIfNeeded(options);
-      }
+        if (options.image) {
+          yield* createDriveImageIfNeeded(options);
+        }
 
-      if (!input && options.image && !await emptyDiskImage(options.image)) {
-        isoPath = null;
-      }
+        if (!input && options.image) {
+          const isEmpty = yield* emptyDiskImage(options.image);
+          if (!isEmpty) {
+            isoPath = null;
+          }
+        }
 
-      if (options.bridge) {
-        await createBridgeNetworkIfNeeded(options.bridge);
-      }
+        if (options.bridge) {
+          yield* createBridgeNetworkIfNeeded(options.bridge);
+        }
 
-      await runQemu(isoPath, options);
+        yield* runQemu(isoPath, options);
+      });
+
+      await Effect.runPromise(program);
     })
     .command("ps", "List all virtual machines")
     .option("--all, -a", "Show all virtual machines, including stopped ones")
