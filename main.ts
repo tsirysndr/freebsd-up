@@ -1,8 +1,11 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-env
 
 import { Command } from "@cliffy/command";
-import { Effect } from "effect";
+import chalk from "chalk";
+import { Effect, pipe } from "effect";
 import pkg from "./deno.json" with { type: "json" };
+import { initVmFile, mergeConfig, parseVmFile } from "./src/config.ts";
+import { CONFIG_FILE_NAME } from "./src/constants.ts";
 import { createBridgeNetworkIfNeeded } from "./src/network.ts";
 import inspect from "./src/subcommands/inspect.ts";
 import logs from "./src/subcommands/logs.ts";
@@ -16,6 +19,7 @@ import {
   downloadIso,
   emptyDiskImage,
   handleInput,
+  isValidISOurl,
   type Options,
   runQemu,
 } from "./src/utils.ts";
@@ -68,6 +72,10 @@ if (import.meta.main) {
       "Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)",
     )
     .example(
+      "Create a default VM configuration file",
+      "freebsd-up init",
+    )
+    .example(
       "Default usage",
       "freebsd-up",
     )
@@ -108,10 +116,19 @@ if (import.meta.main) {
         const resolvedInput = handleInput(input);
         let isoPath: string | null = resolvedInput;
 
-        if (
-          resolvedInput.startsWith("https://") ||
-          resolvedInput.startsWith("http://")
-        ) {
+        const config = yield* pipe(
+          parseVmFile(CONFIG_FILE_NAME),
+          Effect.tap(() => Effect.log("Parsed VM configuration file.")),
+          Effect.catchAll(() => Effect.succeed(null)),
+        );
+
+        if (!input && (isValidISOurl(config?.vm?.iso))) {
+          isoPath = yield* downloadIso(config!.vm!.iso!, options);
+        }
+
+        options = yield* mergeConfig(config, options);
+
+        if (input && isValidISOurl(resolvedInput)) {
           isoPath = yield* downloadIso(resolvedInput, options);
         }
 
@@ -128,6 +145,10 @@ if (import.meta.main) {
 
         if (options.bridge) {
           yield* createBridgeNetworkIfNeeded(options.bridge);
+        }
+
+        if (!input && !config?.vm?.iso && isValidISOurl(isoPath!)) {
+          isoPath = null;
         }
 
         yield* runQemu(isoPath, options);
@@ -206,6 +227,20 @@ if (import.meta.main) {
     .arguments("<vm-name:string>")
     .action(async (_options: unknown, vmName: string) => {
       await restart(vmName);
+    })
+    .command("init", "Initialize a default VM configuration file")
+    .action(async () => {
+      await Effect.runPromise(initVmFile(CONFIG_FILE_NAME));
+      console.log(
+        `New VM configuration file created at ${
+          chalk.greenBright("./") +
+          chalk.greenBright(CONFIG_FILE_NAME)
+        }`,
+      );
+      console.log(
+        `You can edit this file to customize your VM settings and then start the VM with:`,
+      );
+      console.log(`  ${chalk.greenBright(`freebsd-up`)}`);
     })
     .parse(Deno.args);
 }
