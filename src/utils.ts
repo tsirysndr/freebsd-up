@@ -7,7 +7,7 @@ import { EMPTY_DISK_THRESHOLD_KB, LOGS_DIR } from "./constants.ts";
 import { generateRandomMacAddress } from "./network.ts";
 import { saveInstanceState, updateInstanceState } from "./state.ts";
 
-const DEFAULT_VERSION = "14.3-RELEASE";
+export const DEFAULT_VERSION = "14.3-RELEASE";
 
 export interface Options {
   output?: string;
@@ -25,6 +25,13 @@ export interface Options {
 class LogCommandError extends Data.TaggedError("LogCommandError")<{
   cause?: unknown;
 }> {}
+
+export const isValidISOurl = (url?: string): boolean => {
+  return Boolean(
+    (url?.startsWith("http://") || url?.startsWith("https://")) &&
+      url?.endsWith(".iso"),
+  );
+};
 
 const du = (path: string) =>
   Effect.tryPromise({
@@ -104,6 +111,7 @@ export const downloadIso = (
 
     yield* Effect.tryPromise({
       try: async () => {
+        console.log(chalk.blueBright(`Downloading ISO from ${url}...`));
         const cmd = new Deno.Command("curl", {
           args: ["-L", "-o", outputPath, url],
           stdin: "inherit",
