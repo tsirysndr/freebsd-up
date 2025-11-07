@@ -1,3 +1,4 @@
+export * from "./config.ts";
 export * from "./constants.ts";
 export * from "./context.ts";
 export * from "./db.ts";
