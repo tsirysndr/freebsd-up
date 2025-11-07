@@ -88,6 +88,7 @@ export const mergeConfig = (
       size: _.get(config, "vm.size", "20G"),
     },
     network: {
+      bridge: _.get(config, "network.bridge"),
       port_forward: _.get(config, "network.port_forward", "2222:22"),
     },
     options: {
