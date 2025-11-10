@@ -225,7 +225,7 @@ freebsd-up images
 Tag a VM disk image:
 
 ```bash
-freebsd-up tag vm-name registry.example.com/myimage:latest
+freebsd-up tag vm-name ghcr.io/tsirysndr/freebsd:15.0-BETA4
 ```
 
 Remove a VM disk image:
@@ -243,7 +243,7 @@ freebsd-up login -u username -p password registry.example.com
 Logout from OCI registry:
 
 ```bash
-freebsd-up logout registry.example.com
+freebsd-up logout ghcr.io
 ```
 
 Pull an image from OCI registry:
