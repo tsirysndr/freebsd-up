@@ -15,27 +15,28 @@ tracking, network bridging support, and zero-configuration defaults.
 
 ### Core VM Management
 
-- 🏗️ **Full VM lifecycle management**: Create, start, stop, restart, inspect, and remove
-   VMs
+- 🏗️ **Full VM lifecycle management**: Create, start, stop, restart, inspect,
+  and remove VMs
 - 💾 **Persistent state tracking**: SQLite database stores VM configurations and
-   state
+  state
 - 📊 **VM listing and monitoring**: View running and stopped VMs with detailed
-   information
+  information
 - 🔍 **VM inspection**: Get detailed information about any managed VM
 - 📋 **VM logging**: View and follow VM logs with built-in log management
 - 🔄 **VM restart**: Gracefully restart VMs with preserved configuration
 - 🗑️ **VM removal**: Clean removal of VMs from the database
 - 🏷️ **Auto-generated VM names**: Unique identifiers for easy VM management
-- 🏛️ __Cross-platform support__: Works on both x86_64 and aarch64 architectures
+- 🏛️ **Cross-platform support**: Works on both x86_64 and aarch64 architectures
 - 🔧 **Background mode**: Run VMs in detached mode for headless operation
 
 ### Network & Storage
 
 - 🌐 **Flexible networking**: Support for both user-mode and bridge networking
 - 🔗 **Network bridge support**: Automatic bridge creation and management with
-   `--bridge`
+  `--bridge`
 - 🖧 **MAC address management**: Persistent MAC addresses for each VM
-- � **Port forwarding**: Custom port mapping for network services with `--port-forward`
+- � **Port forwarding**: Custom port mapping for network services with
+  `--port-forward`
 - �💾 **Persistent storage support**: Attach and auto-create disk images
 - 🗂️ **Multiple disk formats**: Support for qcow2, raw, and other disk formats
 - 📏 **Configurable disk sizes**: Specify disk image size on creation
@@ -44,35 +45,45 @@ tracking, network bridging support, and zero-configuration defaults.
 
 ### Image Management & OCI Registry Support
 
-- 📦 **OCI Registry Integration**: Pull and push VM disk images to OCI-compatible registries
-- 🗂️ **Image Management**: List, tag, and remove VM disk images with `images`, `tag`, and `rmi` commands
-- 🔐 **Registry Authentication**: Login and logout from OCI registries with `login` and `logout` commands
-- 🔄 **Image Sharing**: Share VM configurations and disk images across teams and environments
-- 📥 **Pull from Registry**: Download pre-configured VM images from remote registries
-- 📤 **Push to Registry**: Upload VM disk images to remote registries for distribution
+- 📦 **OCI Registry Integration**: Pull and push VM disk images to
+  OCI-compatible registries
+- 🗂️ **Image Management**: List, tag, and remove VM disk images with `images`,
+  `tag`, and `rmi` commands
+- 🔐 **Registry Authentication**: Login and logout from OCI registries with
+  `login` and `logout` commands
+- 🔄 **Image Sharing**: Share VM configurations and disk images across teams and
+  environments
+- 📥 **Pull from Registry**: Download pre-configured VM images from remote
+  registries
+- 📤 **Push to Registry**: Upload VM disk images to remote registries for
+  distribution
 
 ### Configuration Management
 
-- 📄 **Configuration Files**: Support for TOML-based VM configuration files with `freebsd-up.toml`
-- ⚙️ **Declarative VM Setup**: Define VM settings in configuration files for reproducible environments
-- 🔧 **Init Command**: Generate default configuration files with `freebsd-up init`
-- 🔀 **Config Merging**: Command-line options override configuration file settings
+- 📄 **Configuration Files**: Support for TOML-based VM configuration files with
+  `freebsd-up.toml`
+- ⚙️ **Declarative VM Setup**: Define VM settings in configuration files for
+  reproducible environments
+- 🔧 **Init Command**: Generate default configuration files with
+  `freebsd-up init`
+- 🔀 **Config Merging**: Command-line options override configuration file
+  settings
 
 - 🔗 **Download and boot from URLs**: Automatically downloads ISO images from
-   remote URLs
+  remote URLs
 - 📁 **Local file support**: Boot from local ISO files
 - 🏷️ **Version shortcuts**: Simply specify a version like `14.3-RELEASE` to
-   auto-download
+  auto-download
 - 🎯 **Smart defaults**: Run without arguments to boot the latest stable release
-   (FreeBSD 14.3-RELEASE)
+  (FreeBSD 14.3-RELEASE)
 - ⚡ **Zero configuration**: Works out of the box with sensible defaults
 - 🖥️ **Serial console**: Configured for headless operation with stdio console
 - 💾 **Smart caching**: Automatically skips re-downloading existing ISO files
 - 🆘 **Help support**: Built-in help with `--help` or `-h` flags
 - ⚙️ **Configurable VM options**: Customize CPU type, core count, memory
-   allocation
+  allocation
 - 📝 **Enhanced CLI**: Powered by [Cliffy](http://cliffy.io/) for robust
-   command-line parsing
+  command-line parsing
 
 ## 📋 Prerequisites
 
@@ -238,13 +249,13 @@ freebsd-up logout registry.example.com
 Pull an image from OCI registry:
 
 ```bash
-freebsd-up pull registry.example.com/myimage:latest
+freebsd-up pull ghcr.io/tsirysndr/freebsd:15.0-BETA4
 ```
 
 Push an image to OCI registry:
 
 ```bash
-freebsd-up push registry.example.com/myimage:latest
+freebsd-up push ghcr.io/tsirysndr/freebsd:15.0-BETA4
 ```
 
 ### Using Configuration Files
@@ -255,7 +266,8 @@ Initialize a configuration file in your project:
 freebsd-up init
 ```
 
-This creates a `freebsd-up.toml` file with default settings. Example configuration:
+This creates a `freebsd-up.toml` file with default settings. Example
+configuration:
 
 ```toml
 [vm]
@@ -275,10 +287,10 @@ port_forward = "8080:80,2222:22"
 detach = false
 ```
 
-Command-line options will override configuration file settings, allowing you to customize VMs on a per-run basis while maintaining defaults in the config file.
+Command-line options will override configuration file settings, allowing you to
+customize VMs on a per-run basis while maintaining defaults in the config file.
 
-```sh
-
+````sh
 Specify custom CPU type, core count, memory allocation, persistent storage, networking, and port forwarding:
 
 ```bash
@@ -308,7 +320,7 @@ freebsd-up --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
 freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --port-forward 8080:80,2222:22 --detach --output ./my-freebsd.iso
-```
+````
 
 ### Get Help
 
@@ -337,14 +349,15 @@ FreeBSD-Up supports several command-line options for customization:
 - `-m, --memory <size>` - Amount of memory for the VM (default: `2G`)
 - `-i, --image <path>` - Path to VM disk image for persistent storage
 - `--disk-format <format>` - Disk image format: qcow2, raw, etc. (default:
-   `raw`)
+  `raw`)
 - `-s, --size <size>` - Size of disk image to create if it doesn't exist
-   (default: `20G`)
+  (default: `20G`)
 
 ### Network Options
 
 - `-b, --bridge <name>` - Name of the network bridge to use (e.g., br0)
-- `-p, --port-forward <mappings>` - Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)
+- `-p, --port-forward <mappings>` - Port forwarding rules in the format
+  hostPort:guestPort (comma-separated for multiple)
 
 ### Execution Options
 
@@ -356,9 +369,11 @@ FreeBSD-Up supports several command-line options for customization:
 
 ### Management Commands
 
-- `init` - Initialize a VM configuration file (`freebsd-up.toml`) in the current directory
+- `init` - Initialize a VM configuration file (`freebsd-up.toml`) in the current
+  directory
 - `ps [--all]` - List running VMs (use --all to include stopped VMs)
-- `start <vm-name> [--detach]` - Start a specific VM by name (optionally in background)
+- `start <vm-name> [--detach]` - Start a specific VM by name (optionally in
+  background)
 - `stop <vm-name>` - Stop a specific VM by name
 - `restart <vm-name>` - Restart a specific VM by name
 - `inspect <vm-name>` - Show detailed information about a VM
@@ -462,9 +477,9 @@ The script creates a VM with the following default specifications:
 - **Memory**: 2GB RAM (configurable with `--memory`)
 - **Cores**: 2 virtual CPUs (configurable with `--cpus`)
 - **Storage**: ISO-only by default; optional persistent disk (configurable with
-   `--image`)
+  `--image`)
 - **Network**: User mode networking with SSH forwarding (host:2222 → guest:22)
-   or bridge networking with `--bridge`
+  or bridge networking with `--bridge`
 - **Port Forwarding**: Configurable port mappings with `--port-forward`
 - **Console**: Enhanced serial console via stdio with proper signal handling
 - **Default Version**: FreeBSD 14.3-RELEASE (when no arguments provided)
@@ -588,19 +603,19 @@ Key architecture components:
 
 - **Modular design**: Core functionality split into separate modules in `src/`
 - **Database integration**: SQLite database for persistent VM state management
-   (see `src/db.ts`)
-- **Image management**: OCI registry integration for sharing and distributing VM images
-   (see `src/images.ts`, `src/oras.ts`)
+  (see `src/db.ts`)
+- **Image management**: OCI registry integration for sharing and distributing VM
+  images (see `src/images.ts`, `src/oras.ts`)
 - **Configuration files**: TOML-based configuration for declarative VM setups
-   (see `src/config.ts`)
-- **Effect-based error handling**: Functional error handling and async operations using
-   the Effect library for robust error management
+  (see `src/config.ts`)
+- **Effect-based error handling**: Functional error handling and async
+  operations using the Effect library for robust error management
 - **Subcommand structure**: Dedicated commands for VM lifecycle operations in
-   `src/subcommands/`
+  `src/subcommands/`
 - **Network management**: Automatic bridge setup and MAC address assignment in
-   `src/network.ts`
+  `src/network.ts`
 - **State tracking**: Comprehensive VM state persistence across restarts in
-   `src/state.ts`
+  `src/state.ts`
 
 ### Supported Version Formats
 
@@ -657,32 +672,33 @@ freebsd-up/
 The project uses the following key dependencies:
 
 - **[@paralleldrive/cuid2](https://www.npmjs.com/package/@paralleldrive/cuid2)** -
-   Unique ID generation for VMs
+  Unique ID generation for VMs
 - **[@cliffy/command](https://jsr.io/@cliffy/command)** - Modern command-line
-   argument parsing and subcommands
+  argument parsing and subcommands
 - **[@cliffy/flags](https://jsr.io/@cliffy/flags)** - Command-line flag parsing
-- **[@cliffy/prompt](https://jsr.io/@cliffy/prompt)** - Interactive prompts for CLI
+- **[@cliffy/prompt](https://jsr.io/@cliffy/prompt)** - Interactive prompts for
+  CLI
 - **[@cliffy/table](https://jsr.io/@cliffy/table)** - Formatted table output for
-   VM listings
+  VM listings
 - **[@db/sqlite](https://jsr.io/@db/sqlite)** - SQLite database for VM state
-   persistence
+  persistence
 - **[@soapbox/kysely-deno-sqlite](https://jsr.io/@soapbox/kysely-deno-sqlite)** -
-   SQLite dialect for Kysely
+  SQLite dialect for Kysely
 - **[@es-toolkit/es-toolkit](https://jsr.io/@es-toolkit/es-toolkit)** - Modern
-   utility functions (replacing lodash)
+  utility functions (replacing lodash)
 - **[@std/io](https://jsr.io/@std/io)** - Standard I/O utilities
 - **[@std/path](https://jsr.io/@std/path)** - Path manipulation utilities
 - **[@std/toml](https://jsr.io/@std/toml)** - TOML configuration file parsing
 - **[@zod/zod](https://jsr.io/@zod/zod)** - TypeScript-first schema validation
 - **[kysely](https://www.npmjs.com/package/kysely)** - Type-safe SQL query
-   builder
+  builder
 - **[chalk](https://www.npmjs.com/package/chalk)** - Terminal styling and colors
 - **[dayjs](https://www.npmjs.com/package/dayjs)** - Date formatting and
-   manipulation
-- **[effect](https://www.npmjs.com/package/effect)** - Functional effect system for
-   error handling and async operations
+  manipulation
+- **[effect](https://www.npmjs.com/package/effect)** - Functional effect system
+  for error handling and async operations
 - **[moniker](https://www.npmjs.com/package/moniker)** - Unique name generation
-   for VMs
+  for VMs
 
 ## 🤝 Contributing
 
