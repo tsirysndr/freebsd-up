@@ -61,7 +61,7 @@ tracking, network bridging support, and zero-configuration defaults.
 ### Configuration Management
 
 - 📄 **Configuration Files**: Support for TOML-based VM configuration files with
-  `freebsd-up.toml`
+  `vmconfig.toml`
 - ⚙️ **Declarative VM Setup**: Define VM settings in configuration files for
   reproducible environments
 - 🔧 **Init Command**: Generate default configuration files with
