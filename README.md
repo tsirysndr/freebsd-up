@@ -237,7 +237,7 @@ freebsd-up rmi image-id
 Login to OCI registry:
 
 ```bash
-freebsd-up login -u tsirysndr -p password ghcr.io
+freebsd-up login -u tsirysndr ghcr.io
 ```
 
 Logout from OCI registry:
