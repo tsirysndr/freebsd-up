@@ -22,6 +22,7 @@ export interface Options {
   portForward?: string;
   detach?: boolean;
   install?: boolean;
+  volume?: string;
 }
 
 class LogCommandError extends Data.TaggedError("LogCommandError")<{

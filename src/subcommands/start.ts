@@ -2,9 +2,11 @@ import { parseFlags } from "@cliffy/flags";
 import _ from "@es-toolkit/es-toolkit/compat";
 import { Data, Effect, pipe } from "effect";
 import { LOGS_DIR } from "../constants.ts";
-import type { VirtualMachine } from "../db.ts";
+import type { VirtualMachine, Volume } from "../db.ts";
+import { getImage } from "../images.ts";
 import { getInstanceState, updateInstanceState } from "../state.ts";
 import { setupFirmwareFilesIfNeeded, setupNATNetworkArgs } from "../utils.ts";
+import { createVolume, getVolume } from "../volumes.ts";
 
 class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
   name: string;
@@ -174,15 +176,54 @@ const handleError = (error: VmNotFoundError | CommandError | Error) =>
     Deno.exit(1);
   });
 
+const createVolumeIfNeeded = (
+  vm: VirtualMachine,
+): Effect.Effect<[VirtualMachine, Volume?], Error, never> =>
+  Effect.gen(function* () {
+    const { flags } = parseFlags(Deno.args);
+    if (!flags.volume) {
+      return [vm];
+    }
+    const volume = yield* getVolume(flags.volume as string);
+    if (volume) {
+      return [vm, volume];
+    }
+
+    if (!vm.drivePath) {
+      throw new Error(
+        `Cannot create volume: Virtual machine ${vm.name} has no drivePath defined.`,
+      );
+    }
+
+    let image = yield* getImage(vm.drivePath);
+
+    if (!image) {
+      const volume = yield* getVolume(vm.drivePath);
+      if (volume) {
+        image = yield* getImage(volume.baseImageId);
+      }
+    }
+
+    const newVolume = yield* createVolume(flags.volume as string, image!);
+    return [vm, newVolume];
+  });
+
 const startDetachedEffect = (name: string) =>
   pipe(
     findVm(name),
     Effect.tap(logStarting),
     Effect.flatMap(applyFlags),
-    Effect.flatMap((vm) =>
+    Effect.flatMap(createVolumeIfNeeded),
+    Effect.flatMap(([vm, volume]) =>
       pipe(
         setupFirmware(),
-        Effect.flatMap((firmwareArgs) => buildQemuArgs(vm, firmwareArgs)),
+        Effect.flatMap((firmwareArgs) =>
+          buildQemuArgs({
+            ...vm,
+            drivePath: volume ? volume.path : vm.drivePath,
+            diskFormat: volume ? "qcow2" : vm.diskFormat,
+          }, firmwareArgs)
+        ),
         Effect.flatMap((qemuArgs) =>
           pipe(
             createLogsDir(),
@@ -201,10 +242,17 @@ const startInteractiveEffect = (name: string) =>
     findVm(name),
     Effect.tap(logStarting),
     Effect.flatMap(applyFlags),
-    Effect.flatMap((vm) =>
+    Effect.flatMap(createVolumeIfNeeded),
+    Effect.flatMap(([vm, volume]) =>
       pipe(
         setupFirmware(),
-        Effect.flatMap((firmwareArgs) => buildQemuArgs(vm, firmwareArgs)),
+        Effect.flatMap((firmwareArgs) =>
+          buildQemuArgs({
+            ...vm,
+            drivePath: volume ? volume.path : vm.drivePath,
+            diskFormat: volume ? "qcow2" : vm.diskFormat,
+          }, firmwareArgs)
+        ),
         Effect.flatMap((qemuArgs) => startInteractiveQemu(name, vm, qemuArgs)),
         Effect.map((status) => status.success ? 0 : (status.code || 1)),
       )

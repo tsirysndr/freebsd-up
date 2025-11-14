@@ -26,6 +26,7 @@ import run from "./src/subcommands/run.ts";
 import start from "./src/subcommands/start.ts";
 import stop from "./src/subcommands/stop.ts";
 import tag from "./src/subcommands/tag.ts";
+import * as volumes from "./src/subcommands/volume.ts";
 import {
   createDriveImageIfNeeded,
   downloadIso,
@@ -237,6 +238,10 @@ if (import.meta.main) {
       "-p, --port-forward <mappings:string>",
       "Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)",
     )
+    .option(
+      "-v, --volume <name:string>",
+      "Name of the volume to attach to the VM, will be created if it doesn't exist",
+    )
     .action(async (options: unknown, vmName: string) => {
       await start(vmName, Boolean((options as { detach: boolean }).detach));
     })
@@ -367,8 +372,31 @@ if (import.meta.main) {
       "-p, --port-forward <mappings:string>",
       "Port forwarding rules in the format hostPort:guestPort (comma-separated for multiple)",
     )
+    .option(
+      "-v, --volume <name:string>",
+      "Name of the volume to attach to the VM, will be created if it doesn't exist",
+    )
     .action(async (_options: unknown, image: string) => {
       await run(image);
     })
+    .command("volumes", "List all volumes")
+    .action(async () => {
+      await volumes.list();
+    })
+    .command(
+      "volume",
+      new Command()
+        .command("rm", "Remove a volume")
+        .arguments("<volume-name:string>")
+        .action(async (_options: unknown, volumeName: string) => {
+          await volumes.remove(volumeName);
+        })
+        .command("inspect", "Inspect a volume")
+        .arguments("<volume-name:string>")
+        .action(async (_options: unknown, volumeName: string) => {
+          await volumes.inspect(volumeName);
+        }),
+    )
+    .description("Manage volumes")
     .parse(Deno.args);
 }

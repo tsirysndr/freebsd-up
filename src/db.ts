@@ -16,6 +16,7 @@ export const createDb = (location: string): Database => {
 export type DatabaseSchema = {
   virtual_machines: VirtualMachine;
   images: Image;
+  volumes: Volume;
 };
 
 export type VirtualMachine = {
@@ -34,6 +35,7 @@ export type VirtualMachine = {
   version: string;
   status: STATUS;
   pid: number;
+  volume?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -46,6 +48,15 @@ export type Image = {
   path: string;
   format: string;
   digest?: string;
+  createdAt?: string;
+};
+
+export type Volume = {
+  id: string;
+  name: string;
+  baseImageId: string;
+  path: string;
+  size?: string;
   createdAt?: string;
 };
 
