@@ -218,6 +218,80 @@ migrations["007"] = {
   },
 };
 
+migrations["008"] = {
+  async up(db: Kysely<unknown>): Promise<void> {
+    await db.schema
+      .createTable("volumes")
+      .addColumn("id", "varchar", (col) => col.primaryKey())
+      .addColumn("name", "varchar", (col) => col.notNull().unique())
+      .addColumn(
+        "baseImageId",
+        "varchar",
+        (col) => col.notNull().references("images.id").onDelete("cascade"),
+      )
+      .addColumn("path", "varchar", (col) => col.notNull())
+      .addColumn(
+        "createdAt",
+        "varchar",
+        (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
+      )
+      .execute();
+  },
+
+  async down(db: Kysely<unknown>): Promise<void> {
+    await db.schema.dropTable("volumes").execute();
+  },
+};
+
+migrations["009"] = {
+  async up(db: Kysely<unknown>): Promise<void> {
+    await db.schema
+      .createTable("volumes_new")
+      .addColumn("id", "varchar", (col) => col.primaryKey())
+      .addColumn("name", "varchar", (col) => col.notNull().unique())
+      .addColumn(
+        "baseImageId",
+        "varchar",
+        (col) => col.notNull().references("images.id").onDelete("cascade"),
+      )
+      .addColumn("path", "varchar", (col) => col.notNull())
+      .addColumn(
+        "createdAt",
+        "varchar",
+        (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`),
+      )
+      .execute();
+
+    await sql`
+      INSERT INTO volumes_new (id, name, baseImageId, path, createdAt)
+      SELECT id, name, baseImageId, path, createdAt FROM volumes
+    `.execute(db);
+
+    await db.schema.dropTable("volumes").execute();
+    await sql`ALTER TABLE volumes_new RENAME TO volumes`.execute(db);
+  },
+
+  async down(db: Kysely<unknown>): Promise<void> {
+    await db.schema.dropTable("volumes").execute();
+  },
+};
+
+migrations["010"] = {
+  async up(db: Kysely<unknown>): Promise<void> {
+    await db.schema
+      .alterTable("virtual_machines")
+      .addColumn("volume", "varchar")
+      .execute();
+  },
+
+  async down(db: Kysely<unknown>): Promise<void> {
+    await db.schema
+      .alterTable("virtual_machines")
+      .dropColumn("volume")
+      .execute();
+  },
+};
+
 export const migrateToLatest = async (db: Database): Promise<void> => {
   const migrator = new Migrator({ db, provider: migrationProvider });
   const { error } = await migrator.migrateToLatest();
