@@ -74,37 +74,38 @@ export const deleteVolume = (
 export const createVolume = (
   name: string,
   baseImage: Image,
+  size?: string,
 ): Effect.Effect<Volume, VolumeError, never> =>
   Effect.tryPromise({
     try: async () => {
       const path = `${VOLUME_DIR}/${name}.qcow2`;
 
-      if ((await Deno.stat(path).catch(() => false))) {
-        throw new Error(`Volume with name ${name} already exists`);
+      if (!(await Deno.stat(path).catch(() => false))) {
+        await Deno.mkdir(VOLUME_DIR, { recursive: true });
+        const qemu = new Deno.Command("qemu-img", {
+          args: [
+            "create",
+            "-F",
+            "raw",
+            "-f",
+            "qcow2",
+            "-b",
+            baseImage.path,
+            path,
+            ...(size ? [size] : []),
+          ],
+          stdout: "inherit",
+          stderr: "inherit",
+        })
+          .spawn();
+        const status = await qemu.status;
+        if (!status.success) {
+          throw new Error(
+            `Failed to create volume: qemu-img exited with code ${status.code}`,
+          );
+        }
       }
 
-      await Deno.mkdir(VOLUME_DIR, { recursive: true });
-      const qemu = new Deno.Command("qemu-img", {
-        args: [
-          "create",
-          "-F",
-          "raw",
-          "-f",
-          "qcow2",
-          "-b",
-          baseImage.path,
-          path,
-        ],
-        stdout: "inherit",
-        stderr: "inherit",
-      })
-        .spawn();
-      const status = await qemu.status;
-      if (!status.success) {
-        throw new Error(
-          `Failed to create volume: qemu-img exited with code ${status.code}`,
-        );
-      }
       ctx.db.insertInto("volumes").values({
         id: createId(),
         name,

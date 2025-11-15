@@ -36,6 +36,7 @@ import {
   type Options,
   runQemu,
 } from "./src/utils.ts";
+import serve from "./src/subcommands/serve.ts";
 
 export * from "./src/mod.ts";
 
@@ -398,5 +399,10 @@ if (import.meta.main) {
         }),
     )
     .description("Manage volumes")
+    .command("serve", "Start the FreeBSD-Up HTTP API server")
+    .option("-p, --port <port:number>", "Port to listen on", { default: 8890 })
+    .action(() => {
+      serve();
+    })
     .parse(Deno.args);
 }
