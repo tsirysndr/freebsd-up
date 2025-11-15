@@ -45,7 +45,11 @@ app.get("/", (c) =>
   Effect.runPromise(
     pipe(
       parseQueryParams(c),
-      Effect.flatMap((params) => listInstances(!!params.all)),
+      Effect.flatMap((params) =>
+        listInstances(
+          params.all === "true" || params.all === "1",
+        )
+      ),
       presentation(c),
     ),
   ));
