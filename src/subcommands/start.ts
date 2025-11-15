@@ -31,9 +31,9 @@ const logStarting = (vm: VirtualMachine) =>
 
 const applyFlags = (vm: VirtualMachine) => Effect.succeed(mergeFlags(vm));
 
-const setupFirmware = () => setupFirmwareFilesIfNeeded();
+export const setupFirmware = () => setupFirmwareFilesIfNeeded();
 
-const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
+export const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
   const qemu = Deno.build.arch === "aarch64"
     ? "qemu-system-aarch64"
     : "qemu-system-x86_64";
@@ -72,13 +72,13 @@ const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
   ]);
 };
 
-const createLogsDir = () =>
+export const createLogsDir = () =>
   Effect.tryPromise({
     try: () => Deno.mkdir(LOGS_DIR, { recursive: true }),
     catch: (error) => new CommandError({ cause: error }),
   });
 
-const startDetachedQemu = (
+export const startDetachedQemu = (
   name: string,
   vm: VirtualMachine,
   qemuArgs: string[],
@@ -176,7 +176,7 @@ const handleError = (error: VmNotFoundError | CommandError | Error) =>
     Deno.exit(1);
   });
 
-const createVolumeIfNeeded = (
+export const createVolumeIfNeeded = (
   vm: VirtualMachine,
 ): Effect.Effect<[VirtualMachine, Volume?], Error, never> =>
   Effect.gen(function* () {
