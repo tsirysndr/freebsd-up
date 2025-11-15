@@ -7,6 +7,8 @@ import { cors } from "hono/cors";
 import { bearerAuth } from "hono/bearer-auth";
 import { parseFlags } from "@cliffy/flags";
 
+export { images, machines, volumes };
+
 export default function () {
   const token = Deno.env.get("FREEBSD_UP_API_TOKEN") ||
     crypto.randomUUID();

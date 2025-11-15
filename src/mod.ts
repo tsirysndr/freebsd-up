@@ -8,3 +8,4 @@ export * from "./state.ts";
 export * from "./types.ts";
 export * from "./utils.ts";
 export * from "./volumes.ts";
+export * from "./api/mod.ts";
