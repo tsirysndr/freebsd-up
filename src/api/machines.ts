@@ -1,14 +1,20 @@
 import { Hono } from "hono";
-import { Effect, pipe } from "effect";
+import { Data, Effect, pipe } from "effect";
 import {
+  createVolumeIfNeeded,
   handleError,
+  parseCreateMachineRequest,
   parseParams,
   parseQueryParams,
   parseStartRequest,
   presentation,
 } from "./utils.ts";
-import { getInstanceState } from "../mod.ts";
-import { listInstances } from "../state.ts";
+import { DEFAULT_VERSION, getInstanceState } from "../mod.ts";
+import {
+  listInstances,
+  removeInstanceState,
+  saveInstanceState,
+} from "../state.ts";
 import { findVm, killProcess, updateToStopped } from "../subcommands/stop.ts";
 import {
   buildQemuArgs,
@@ -17,6 +23,21 @@ import {
   setupFirmware,
   startDetachedQemu,
 } from "../subcommands/start.ts";
+import type { NewMachine } from "../types.ts";
+import { createId } from "@paralleldrive/cuid2";
+import { generateRandomMacAddress } from "../network.ts";
+import Moniker from "moniker";
+import { getImage } from "../images.ts";
+
+export class ImageNotFoundError extends Data.TaggedError("ImageNotFoundError")<{
+  id: string;
+}> {}
+
+export class RemoveRunningVmError extends Data.TaggedError(
+  "RemoveRunningVmError",
+)<{
+  id: string;
+}> {}
 
 const app = new Hono();
 
@@ -29,9 +50,52 @@ app.get("/", (c) =>
     ),
   ));
 
-app.post("/", (c) => {
-  return c.json({ message: "New machine created" });
-});
+app.post("/", (c) =>
+  Effect.runPromise(
+    pipe(
+      parseCreateMachineRequest(c),
+      Effect.flatMap((params: NewMachine) =>
+        Effect.gen(function* () {
+          const image = yield* getImage(params.image);
+          if (!image) {
+            return yield* Effect.fail(
+              new ImageNotFoundError({ id: params.image }),
+            );
+          }
+
+          const volume = params.volume
+            ? yield* createVolumeIfNeeded(image, params.volume)
+            : undefined;
+
+          const macAddress = yield* generateRandomMacAddress();
+          const id = createId();
+          yield* saveInstanceState({
+            id,
+            name: Moniker.choose(),
+            bridge: params.bridge,
+            macAddress,
+            memory: params.memory || "2G",
+            cpus: params.cpus || 8,
+            cpu: params.cpu || "host",
+            diskSize: "20G",
+            diskFormat: volume ? "qcow2" : "raw",
+            portForward: params.portForward
+              ? params.portForward.join(",")
+              : undefined,
+            drivePath: volume ? volume.path : image.path,
+            version: image.tag ?? DEFAULT_VERSION,
+            status: "STOPPED",
+            pid: 0,
+          });
+
+          const createdVm = yield* findVm(id);
+          return createdVm;
+        })
+      ),
+      presentation(c),
+      Effect.catchAll((error) => handleError(error, c)),
+    ),
+  ));
 
 app.get("/:id", (c) =>
   Effect.runPromise(
@@ -42,10 +106,26 @@ app.get("/:id", (c) =>
     ),
   ));
 
-app.delete("/:id", (c) => {
-  const { id } = c.req.param();
-  return c.json({ message: `Machine with ID ${id} deleted` });
-});
+app.delete("/:id", (c) =>
+  Effect.runPromise(
+    pipe(
+      parseParams(c),
+      Effect.flatMap(({ id }) => findVm(id)),
+      Effect.flatMap((vm) =>
+        vm.status === "RUNNING"
+          ? Effect.fail(new RemoveRunningVmError({ id: vm.id }))
+          : Effect.succeed(vm)
+      ),
+      Effect.flatMap((vm) =>
+        Effect.gen(function* () {
+          yield* removeInstanceState(vm.id);
+          return vm;
+        })
+      ),
+      presentation(c),
+      Effect.catchAll((error) => handleError(error, c)),
+    ),
+  ));
 
 app.post("/:id/start", (c) =>
   Effect.runPromise(

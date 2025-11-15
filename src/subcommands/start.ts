@@ -104,11 +104,23 @@ export const startDetachedQemu = (
     try: async () => {
       const cmd = new Deno.Command("sh", {
         args: ["-c", fullCommand],
-        stdin: "null",
+        stdin: "piped",
         stdout: "piped",
-      });
+      })
+        .spawn();
 
-      const { stdout } = await cmd.spawn().output();
+      // Wait 2 seconds and send "1" to boot normally
+      setTimeout(async () => {
+        try {
+          const writer = cmd.stdin.getWriter();
+          await writer.write(new TextEncoder().encode("1\n"));
+          await writer.close();
+        } catch {
+          // Ignore errors if stdin is already closed
+        }
+      }, 2000);
+
+      const { stdout } = await cmd.output();
       const qemuPid = parseInt(new TextDecoder().decode(stdout).trim(), 10);
       return { qemuPid, logPath };
     },
