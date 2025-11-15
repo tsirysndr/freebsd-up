@@ -38,11 +38,13 @@
     "jsr:@std/toml@^1.0.11": "1.0.11",
     "jsr:@zod/zod@*": "4.1.12",
     "jsr:@zod/zod@^4.1.12": "4.1.12",
+    "npm:@hono/swagger-ui@~0.5.2": "0.5.2_hono@4.10.6",
     "npm:@paralleldrive/cuid2@^3.0.4": "3.0.4",
     "npm:@types/node@*": "24.2.0",
     "npm:chalk@^5.6.2": "5.6.2",
     "npm:dayjs@^1.11.19": "1.11.19",
     "npm:effect@^3.19.2": "3.19.2",
+    "npm:hono@^4.10.6": "4.10.6",
     "npm:kysely@0.27.6": "0.27.6",
     "npm:kysely@~0.27.2": "0.27.6",
     "npm:moniker@~0.1.2": "0.1.2"
@@ -189,6 +191,12 @@
     }
   },
   "npm": {
+    "@hono/swagger-ui@0.5.2_hono@4.10.6": {
+      "integrity": "sha512-7wxLKdb8h7JTdZ+K8DJNE3KXQMIpJejkBTQjrYlUWF28Z1PGOKw6kUykARe5NTfueIN37jbyG/sBYsbzXzG53A==",
+      "dependencies": [
+        "hono"
+      ]
+    },
     "@noble/hashes@2.0.1": {
       "integrity": "sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw=="
     },
@@ -235,6 +243,9 @@
         "pure-rand"
       ]
     },
+    "hono@4.10.6": {
+      "integrity": "sha512-BIdolzGpDO9MQ4nu3AUuDwHZZ+KViNm+EZ75Ae55eMXMqLVhDFqEMXxtUe9Qh8hjL+pIna/frs2j6Y2yD5Ua/g=="
+    },
     "kysely@0.27.6": {
       "integrity": "sha512-FIyV/64EkKhJmjgC0g2hygpBv5RNWVPyNCqSAD7eTCv6eFWNIi4PN1UvdSJGicN/o35bnevgis4Y0UDC0qi8jQ=="
     },
@@ -262,10 +273,12 @@
       "jsr:@std/path@^1.1.2",
       "jsr:@std/toml@^1.0.11",
       "jsr:@zod/zod@^4.1.12",
+      "npm:@hono/swagger-ui@~0.5.2",
       "npm:@paralleldrive/cuid2@^3.0.4",
       "npm:chalk@^5.6.2",
       "npm:dayjs@^1.11.19",
       "npm:effect@^3.19.2",
+      "npm:hono@^4.10.6",
       "npm:kysely@0.27.6",
       "npm:moniker@~0.1.2"
     ]

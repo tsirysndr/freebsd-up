@@ -4,20 +4,21 @@ import { Data, Effect, pipe } from "effect";
 import type { VirtualMachine } from "../db.ts";
 import { getInstanceState, updateInstanceState } from "../state.ts";
 
-class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
+export class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
   name: string;
 }> {}
 
-class StopCommandError extends Data.TaggedError("StopCommandError")<{
+export class StopCommandError extends Data.TaggedError("StopCommandError")<{
   vmName: string;
   exitCode: number;
+  message?: string;
 }> {}
 
-class CommandError extends Data.TaggedError("CommandError")<{
+export class CommandError extends Data.TaggedError("CommandError")<{
   cause?: unknown;
 }> {}
 
-const findVm = (name: string) =>
+export const findVm = (name: string) =>
   pipe(
     getInstanceState(name),
     Effect.flatMap((vm) =>
@@ -25,7 +26,7 @@ const findVm = (name: string) =>
     ),
   );
 
-const logStopping = (vm: VirtualMachine) =>
+export const logStopping = (vm: VirtualMachine) =>
   Effect.sync(() => {
     console.log(
       `Stopping virtual machine ${chalk.greenBright(vm.name)} (ID: ${
@@ -34,7 +35,7 @@ const logStopping = (vm: VirtualMachine) =>
     );
   });
 
-const killProcess = (vm: VirtualMachine) =>
+export const killProcess = (vm: VirtualMachine) =>
   Effect.tryPromise({
     try: async () => {
       const cmd = new Deno.Command(vm.bridge ? "sudo" : "kill", {
@@ -58,18 +59,20 @@ const killProcess = (vm: VirtualMachine) =>
         new StopCommandError({
           vmName: vm.name,
           exitCode: status.code || 1,
+          message:
+            `Failed to stop VM ${vm.name}, exited with code ${status.code}`,
         }),
       )
     ),
   );
 
-const updateToStopped = (vm: VirtualMachine) =>
+export const updateToStopped = (vm: VirtualMachine) =>
   pipe(
     updateInstanceState(vm.name, "STOPPED"),
-    Effect.map(() => vm),
+    Effect.map(() => ({ ...vm, status: "STOPPED" } as VirtualMachine)),
   );
 
-const logSuccess = (vm: VirtualMachine) =>
+export const logSuccess = (vm: VirtualMachine) =>
   Effect.sync(() => {
     console.log(`Virtual machine ${chalk.greenBright(vm.name)} stopped.`);
   });

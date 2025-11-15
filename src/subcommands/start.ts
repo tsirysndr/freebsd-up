@@ -8,11 +8,16 @@ import { getInstanceState, updateInstanceState } from "../state.ts";
 import { setupFirmwareFilesIfNeeded, setupNATNetworkArgs } from "../utils.ts";
 import { createVolume, getVolume } from "../volumes.ts";
 
-class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
+export class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
   name: string;
 }> {}
 
-class CommandError extends Data.TaggedError("CommandError")<{
+export class VmAlreadyRunningError
+  extends Data.TaggedError("VmAlreadyRunningError")<{
+    name: string;
+  }> {}
+
+export class CommandError extends Data.TaggedError("CommandError")<{
   cause?: unknown;
 }> {}
 
@@ -31,9 +36,9 @@ const logStarting = (vm: VirtualMachine) =>
 
 const applyFlags = (vm: VirtualMachine) => Effect.succeed(mergeFlags(vm));
 
-const setupFirmware = () => setupFirmwareFilesIfNeeded();
+export const setupFirmware = () => setupFirmwareFilesIfNeeded();
 
-const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
+export const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
   const qemu = Deno.build.arch === "aarch64"
     ? "qemu-system-aarch64"
     : "qemu-system-x86_64";
@@ -72,13 +77,13 @@ const buildQemuArgs = (vm: VirtualMachine, firmwareArgs: string[]) => {
   ]);
 };
 
-const createLogsDir = () =>
+export const createLogsDir = () =>
   Effect.tryPromise({
     try: () => Deno.mkdir(LOGS_DIR, { recursive: true }),
     catch: (error) => new CommandError({ cause: error }),
   });
 
-const startDetachedQemu = (
+export const startDetachedQemu = (
   name: string,
   vm: VirtualMachine,
   qemuArgs: string[],
@@ -176,7 +181,7 @@ const handleError = (error: VmNotFoundError | CommandError | Error) =>
     Deno.exit(1);
   });
 
-const createVolumeIfNeeded = (
+export const createVolumeIfNeeded = (
   vm: VirtualMachine,
 ): Effect.Effect<[VirtualMachine, Volume?], Error, never> =>
   Effect.gen(function* () {
@@ -208,9 +213,20 @@ const createVolumeIfNeeded = (
     return [vm, newVolume];
   });
 
+export const failIfVMRunning = (vm: VirtualMachine) =>
+  Effect.gen(function* () {
+    if (vm.status === "RUNNING") {
+      return yield* Effect.fail(
+        new VmAlreadyRunningError({ name: vm.name }),
+      );
+    }
+    return vm;
+  });
+
 const startDetachedEffect = (name: string) =>
   pipe(
     findVm(name),
+    Effect.flatMap(failIfVMRunning),
     Effect.tap(logStarting),
     Effect.flatMap(applyFlags),
     Effect.flatMap(createVolumeIfNeeded),
@@ -240,6 +256,7 @@ const startDetachedEffect = (name: string) =>
 const startInteractiveEffect = (name: string) =>
   pipe(
     findVm(name),
+    Effect.flatMap(failIfVMRunning),
     Effect.tap(logStarting),
     Effect.flatMap(applyFlags),
     Effect.flatMap(createVolumeIfNeeded),
