@@ -13,6 +13,7 @@ import { findVm, killProcess, updateToStopped } from "../subcommands/stop.ts";
 import {
   buildQemuArgs,
   createLogsDir,
+  failIfVMRunning,
   setupFirmware,
   startDetachedQemu,
 } from "../subcommands/start.ts";
@@ -55,6 +56,7 @@ app.post("/:id/start", (c) =>
       ) => Effect.all([findVm(id), Effect.succeed(startRequest)])),
       Effect.flatMap(([vm, startRequest]) =>
         Effect.gen(function* () {
+          yield* failIfVMRunning(vm);
           const firmwareArgs = yield* setupFirmware();
           const qemuArgs = yield* buildQemuArgs({
             ...vm,

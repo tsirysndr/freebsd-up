@@ -8,11 +8,16 @@ import { getInstanceState, updateInstanceState } from "../state.ts";
 import { setupFirmwareFilesIfNeeded, setupNATNetworkArgs } from "../utils.ts";
 import { createVolume, getVolume } from "../volumes.ts";
 
-class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
+export class VmNotFoundError extends Data.TaggedError("VmNotFoundError")<{
   name: string;
 }> {}
 
-class CommandError extends Data.TaggedError("CommandError")<{
+export class VmAlreadyRunningError
+  extends Data.TaggedError("VmAlreadyRunningError")<{
+    name: string;
+  }> {}
+
+export class CommandError extends Data.TaggedError("CommandError")<{
   cause?: unknown;
 }> {}
 
@@ -208,9 +213,20 @@ export const createVolumeIfNeeded = (
     return [vm, newVolume];
   });
 
+export const failIfVMRunning = (vm: VirtualMachine) =>
+  Effect.gen(function* () {
+    if (vm.status === "RUNNING") {
+      return yield* Effect.fail(
+        new VmAlreadyRunningError({ name: vm.name }),
+      );
+    }
+    return vm;
+  });
+
 const startDetachedEffect = (name: string) =>
   pipe(
     findVm(name),
+    Effect.flatMap(failIfVMRunning),
     Effect.tap(logStarting),
     Effect.flatMap(applyFlags),
     Effect.flatMap(createVolumeIfNeeded),
@@ -240,6 +256,7 @@ const startDetachedEffect = (name: string) =>
 const startInteractiveEffect = (name: string) =>
   pipe(
     findVm(name),
+    Effect.flatMap(failIfVMRunning),
     Effect.tap(logStarting),
     Effect.flatMap(applyFlags),
     Effect.flatMap(createVolumeIfNeeded),

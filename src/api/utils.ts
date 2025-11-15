@@ -5,6 +5,7 @@ import {
   StopCommandError,
   VmNotFoundError,
 } from "../subcommands/stop.ts";
+import { VmAlreadyRunningError } from "../subcommands/start.ts";
 import { MachineParamsSchema } from "../types.ts";
 
 export const parseQueryParams = (c: Context) => Effect.succeed(c.req.query());
@@ -25,6 +26,7 @@ export const handleError = (
     | StopCommandError
     | CommandError
     | ParseRequestError
+    | VmAlreadyRunningError
     | Error,
   c: Context,
 ) =>
@@ -51,6 +53,16 @@ export const handleError = (
         {
           message: error.message || "Failed to parse request body",
           code: "PARSE_BODY_ERROR",
+        },
+        400,
+      );
+    }
+
+    if (error instanceof VmAlreadyRunningError) {
+      return c.json(
+        {
+          message: `VM ${error.name} is already running`,
+          code: "VM_ALREADY_RUNNING",
         },
         400,
       );
