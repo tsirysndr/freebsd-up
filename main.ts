@@ -400,6 +400,7 @@ if (import.meta.main) {
     )
     .description("Manage volumes")
     .command("serve", "Start the FreeBSD-Up HTTP API server")
+    .option("-p, --port <port:number>", "Port to listen on", { default: 8890 })
     .action(() => {
       serve();
     })
