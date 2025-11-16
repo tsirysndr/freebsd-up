@@ -364,8 +364,8 @@ detach = false
 Command-line options will override configuration file settings, allowing you to
 customize VMs on a per-run basis while maintaining defaults in the config file.
 
-````sh
-Specify custom CPU type, core count, memory allocation, persistent storage, networking, and port forwarding:
+Specify custom CPU type, core count, memory allocation, persistent storage,
+networking, and port forwarding:
 
 ```bash
 # Custom CPU and memory
@@ -400,7 +400,7 @@ freebsd-up --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
 freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --port-forward 8080:80,2222:22 --detach --volume my-data --install --output ./my-freebsd.iso
-````
+```
 
 ### Get Help
 
