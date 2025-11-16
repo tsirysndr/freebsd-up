@@ -149,16 +149,22 @@ const archiveImage = (img: { path: string }) =>
       }),
   });
 
+// add docker.io/ if no registry is specified
+const formatRepository = (repository: string) =>
+  repository.match(/^[^\/]+\.[^\/]+\/.*/i)
+    ? repository
+    : `docker.io/${repository}`;
+
 const pushToRegistry = (
   img: { repository: string; tag: string; path: string },
 ) =>
   Effect.tryPromise({
     try: async () => {
-      console.log(`Pushing image ${img.repository}...`);
+      console.log(`Pushing image ${formatRepository(img.repository)}...`);
       const process = new Deno.Command("oras", {
         args: [
           "push",
-          `${img.repository}:${img.tag}-${getCurrentArch()}`,
+          `${formatRepository(img.repository)}:${img.tag}-${getCurrentArch()}`,
           "--artifact-type",
           "application/vnd.oci.image.layer.v1.tar",
           "--annotation",
@@ -166,7 +172,7 @@ const pushToRegistry = (
           "--annotation",
           "org.opencontainers.image.os=freebsd",
           "--annotation",
-          "org.opencontainers.image.description=QEMU raw disk image",
+          "org.opencontainers.image.description=QEMU raw disk image of FreeBSD",
           basename(img.path),
         ],
         stdout: "inherit",
@@ -218,10 +224,17 @@ export const pullFromRegistry = (image: string) =>
     Effect.tryPromise({
       try: async () => {
         console.log(`Pulling image ${image}`);
+        const repository = image.split(":")[0];
+        const tag = image.split(":")[1] || "latest";
+        console.log(
+          "pull",
+          `${formatRepository(repository)}:${tag}-${getCurrentArch()}`,
+        );
+
         const process = new Deno.Command("oras", {
           args: [
             "pull",
-            `${image}-${getCurrentArch()}`,
+            `${formatRepository(repository)}:${tag}-${getCurrentArch()}`,
           ],
           stdin: "inherit",
           stdout: "inherit",
@@ -244,11 +257,13 @@ export const pullFromRegistry = (image: string) =>
 export const getImageArchivePath = (image: string) =>
   Effect.tryPromise({
     try: async () => {
+      const repository = image.split(":")[0];
+      const tag = image.split(":")[1] || "latest";
       const process = new Deno.Command("oras", {
         args: [
           "manifest",
           "fetch",
-          `${image}-${getCurrentArch()}`,
+          `${formatRepository(repository)}:${tag}-${getCurrentArch()}`,
         ],
         stdout: "piped",
         stderr: "inherit",
@@ -293,11 +308,13 @@ export const getImageArchivePath = (image: string) =>
 const getImageDigest = (image: string) =>
   Effect.tryPromise({
     try: async () => {
+      const repository = image.split(":")[0];
+      const tag = image.split(":")[1] || "latest";
       const process = new Deno.Command("oras", {
         args: [
           "manifest",
           "fetch",
-          `${image}-${getCurrentArch()}`,
+          `${formatRepository(repository)}:${tag}-${getCurrentArch()}`,
         ],
         stdout: "piped",
         stderr: "inherit",
