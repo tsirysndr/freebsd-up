@@ -305,13 +305,23 @@ function mergeFlags(vm: VirtualMachine): VirtualMachine {
   const { flags } = parseFlags(Deno.args);
   return {
     ...vm,
-    memory: flags.memory ? String(flags.memory) : vm.memory,
-    cpus: flags.cpus ? Number(flags.cpus) : vm.cpus,
-    cpu: flags.cpu ? String(flags.cpu) : vm.cpu,
+    memory: (flags.memory || flags.m)
+      ? String(flags.memory || flags.m)
+      : vm.memory,
+    cpus: (flags.cpus || flags.C) ? Number(flags.cpus || flags.C) : vm.cpus,
+    cpu: (flags.cpu || flags.c) ? String(flags.cpu || flags.c) : vm.cpu,
     diskFormat: flags.diskFormat ? String(flags.diskFormat) : vm.diskFormat,
-    portForward: flags.portForward ? String(flags.portForward) : vm.portForward,
-    drivePath: flags.image ? String(flags.image) : vm.drivePath,
-    bridge: flags.bridge ? String(flags.bridge) : vm.bridge,
-    diskSize: flags.size ? String(flags.size) : vm.diskSize,
+    portForward: (flags.portForward || flags.p)
+      ? String(flags.portForward || flags.p)
+      : vm.portForward,
+    drivePath: (flags.image || flags.i)
+      ? String(flags.image || flags.i)
+      : vm.drivePath,
+    bridge: (flags.bridge || flags.b)
+      ? String(flags.bridge || flags.b)
+      : vm.bridge,
+    diskSize: (flags.size || flags.s)
+      ? String(flags.size || flags.s)
+      : vm.diskSize,
   };
 }

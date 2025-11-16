@@ -77,6 +77,14 @@ export const mergeConfig = (
   options: Options,
 ): Effect.Effect<Options, never, never> => {
   const { flags } = parseFlags(Deno.args);
+  flags.image = flags.i || flags.image;
+  flags.memory = flags.m || flags.memory;
+  flags.cpus = flags.C || flags.cpus;
+  flags.cpu = flags.c || flags.cpu;
+  flags.portForward = flags.p || flags.portForward;
+  flags.bridge = flags.b || flags.bridge;
+  flags.size = flags.s || flags.size;
+
   const defaultConfig: VmConfig = {
     vm: {
       iso: _.get(config, "vm.iso"),

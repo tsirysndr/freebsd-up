@@ -84,15 +84,15 @@ export default async function (
 function mergeFlags(image: Image): Options {
   const { flags } = parseFlags(Deno.args);
   return {
-    cpu: flags.cpu ? flags.cpu : "host",
-    cpus: flags.cpus ? flags.cpus : 2,
-    memory: flags.memory ? flags.memory : "2G",
+    cpu: (flags.cpu || flags.c) ? (flags.cpu || flags.c) : "host",
+    cpus: (flags.cpus || flags.C) ? (flags.cpus || flags.C) : 2,
+    memory: (flags.memory || flags.m) ? (flags.memory || flags.m) : "2G",
     image: image.path,
-    bridge: flags.bridge,
-    portForward: flags.portForward,
-    detach: flags.detach,
+    bridge: flags.bridge || flags.b,
+    portForward: flags.portForward || flags.p,
+    detach: flags.detach || flags.d,
     install: false,
     diskFormat: image.format,
-    volume: flags.volume,
+    volume: flags.volume || flags.v,
   };
 }
