@@ -28,6 +28,8 @@ tracking, network bridging support, and zero-configuration defaults.
 - 🏷️ **Auto-generated VM names**: Unique identifiers for easy VM management
 - 🏛️ **Cross-platform support**: Works on both x86_64 and aarch64 architectures
 - 🔧 **Background mode**: Run VMs in detached mode for headless operation
+- 🚀 **Run from images**: Create and run VMs directly from OCI registry images
+- 💾 **Install mode**: Persist changes to VM disk images with `--install` flag
 
 ### Network & Storage
 
@@ -35,11 +37,13 @@ tracking, network bridging support, and zero-configuration defaults.
 - 🔗 **Network bridge support**: Automatic bridge creation and management with
   `--bridge`
 - 🖧 **MAC address management**: Persistent MAC addresses for each VM
-- � **Port forwarding**: Custom port mapping for network services with
+- 📍 **Port forwarding**: Custom port mapping for network services with
   `--port-forward`
-- �💾 **Persistent storage support**: Attach and auto-create disk images
+- 💾 **Persistent storage support**: Attach and auto-create disk images
 - 🗂️ **Multiple disk formats**: Support for qcow2, raw, and other disk formats
 - 📏 **Configurable disk sizes**: Specify disk image size on creation
+- 🗄️ **Volume management**: Create, list, inspect, and remove persistent volumes
+- 🔗 **Volume attachment**: Attach volumes to VMs with `--volume` flag
 
 ### Convenience Features
 
@@ -68,6 +72,19 @@ tracking, network bridging support, and zero-configuration defaults.
   `freebsd-up init`
 - 🔀 **Config Merging**: Command-line options override configuration file
   settings
+
+### HTTP API Server
+
+- 🌐 **RESTful API**: Built-in HTTP API server for remote VM management
+- 🔐 **Bearer Token Authentication**: Secure API access with token
+  authentication
+- 🖥️ **Machine Management API**: Create, start, stop, and manage VMs via HTTP
+- 🗂️ **Image Management API**: List, pull, push, and manage VM images via HTTP
+- 💾 **Volume Management API**: Create, list, inspect, and remove volumes via
+  HTTP
+- 🔧 **Configurable Port**: Customize API server port with `--port` or
+  environment variable
+- 📊 **CORS Support**: Built-in CORS support for web-based clients
 
 - 🔗 **Download and boot from URLs**: Automatically downloads ISO images from
   remote URLs
@@ -258,6 +275,63 @@ Push an image to OCI registry:
 freebsd-up push ghcr.io/tsirysndr/freebsd:15.0-BETA4
 ```
 
+Run a VM from an OCI registry image:
+
+```bash
+freebsd-up run ghcr.io/tsirysndr/freebsd:15.0-BETA4
+```
+
+### Volume Management Commands
+
+List all volumes:
+
+```bash
+freebsd-up volumes
+```
+
+Remove a volume:
+
+```bash
+freebsd-up volume rm volume-name
+```
+
+Inspect a volume:
+
+```bash
+freebsd-up volume inspect volume-name
+```
+
+Attach a volume to a VM:
+
+```bash
+freebsd-up start vm-name --volume my-volume
+```
+
+### Starting the API Server
+
+Start the HTTP API server:
+
+```bash
+freebsd-up serve
+```
+
+Start the API server on a custom port:
+
+```bash
+freebsd-up serve --port 9000
+```
+
+Set a custom API token via environment variable:
+
+```bash
+export FREEBSD_UP_API_TOKEN=your-secret-token
+freebsd-up serve
+```
+
+The API server provides RESTful endpoints for managing VMs, images, and volumes
+remotely. It includes bearer token authentication for security and supports CORS
+for web-based clients.
+
 ### Using Configuration Files
 
 Initialize a configuration file in your project:
@@ -266,7 +340,7 @@ Initialize a configuration file in your project:
 freebsd-up init
 ```
 
-This creates a `freebsd-up.toml` file with default settings. Example
+This creates a `vmconfig.toml` file with default settings. Example
 configuration:
 
 ```toml
@@ -315,11 +389,17 @@ freebsd-up --port-forward 8080:80,2222:22 14.3-RELEASE
 # Run VM in background (detached mode)
 freebsd-up --detach 14.3-RELEASE
 
+# Persist changes to disk (install mode)
+freebsd-up --install 14.3-RELEASE
+
+# Attach a volume to the VM
+freebsd-up --volume my-data 14.3-RELEASE
+
 # Download to specific location
 freebsd-up --output ./downloads/freebsd.iso 15.0-BETA3
 
 # Combine all options
-freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --port-forward 8080:80,2222:22 --detach --output ./my-freebsd.iso
+freebsd-up --cpu qemu64 --cpus 2 --memory 1G --image ./my-disk.qcow2 --disk-format qcow2 --size 30G --bridge br0 --port-forward 8080:80,2222:22 --detach --volume my-data --install --output ./my-freebsd.iso
 ````
 
 ### Get Help
@@ -355,13 +435,21 @@ FreeBSD-Up supports several command-line options for customization:
 
 ### Network Options
 
+### Network Options
+
 - `-b, --bridge <name>` - Name of the network bridge to use (e.g., br0)
 - `-p, --port-forward <mappings>` - Port forwarding rules in the format
   hostPort:guestPort (comma-separated for multiple)
 
+### Storage Options
+
+- `-v, --volume <name>` - Name of the volume to attach to the VM (will be
+  created if it doesn't exist)
+
 ### Execution Options
 
 - `-d, --detach` - Run VM in the background and print VM name
+- `--install` - Persist changes to the VM disk image
 
 ### File Options
 
@@ -369,16 +457,17 @@ FreeBSD-Up supports several command-line options for customization:
 
 ### Management Commands
 
-- `init` - Initialize a VM configuration file (`freebsd-up.toml`) in the current
+- `init` - Initialize a VM configuration file (`vmconfig.toml`) in the current
   directory
 - `ps [--all]` - List running VMs (use --all to include stopped VMs)
-- `start <vm-name> [--detach]` - Start a specific VM by name (optionally in
-  background)
+- `start <vm-name> [--detach] [-v, --volume <name>]` - Start a specific VM by
+  name (optionally in background, optionally attach a volume)
 - `stop <vm-name>` - Stop a specific VM by name
 - `restart <vm-name>` - Restart a specific VM by name
 - `inspect <vm-name>` - Show detailed information about a VM
 - `logs <vm-name> [--follow]` - View VM logs (optionally follow in real-time)
 - `rm <vm-name>` - Remove a VM and its configuration from the database
+- `run <image:tag> [options]` - Create and run a VM from an OCI registry image
 - `images` - List all VM disk images
 - `tag <vm-name> <image:tag>` - Tag a VM disk image for pushing to a registry
 - `rmi <image-id>` - Remove a VM disk image
@@ -386,6 +475,10 @@ FreeBSD-Up supports several command-line options for customization:
 - `logout <registry>` - Logout from an OCI registry
 - `pull <image:tag>` - Pull a VM disk image from an OCI registry
 - `push <image:tag>` - Push a VM disk image to an OCI registry
+- `volumes` - List all volumes
+- `volume rm <volume-name>` - Remove a volume
+- `volume inspect <volume-name>` - Inspect a volume
+- `serve [--port <port>]` - Start the HTTP API server (default port: 8890)
 
 ### Help Options
 
@@ -419,11 +512,17 @@ freebsd-up --port-forward 8080:80,2222:22 14.3-RELEASE
 # Run VM in background mode
 freebsd-up --detach 14.3-RELEASE
 
+# Persist changes to disk (install mode)
+freebsd-up --install 14.3-RELEASE
+
+# Attach a volume to the VM
+freebsd-up --volume my-data 14.3-RELEASE
+
 # Save ISO to specific location
 freebsd-up --output ./isos/freebsd.iso https://example.com/freebsd.iso
 
-# Combine multiple options with bridge networking, port forwarding, and persistent storage
-freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-disk.qcow2 --disk-format qcow2 --size 50G --bridge br0 --port-forward 8080:80,2222:22 --detach --output ./downloads/ 14.3-RELEASE
+# Combine multiple options with bridge networking, port forwarding, persistent storage, and volumes
+freebsd-up --cpu host --cpus 4 --memory 8G --image ./vm-disk.qcow2 --disk-format qcow2 --size 50G --bridge br0 --port-forward 8080:80,2222:22 --detach --volume my-data --install --output ./downloads/ 14.3-RELEASE
 
 # List all VMs (including stopped ones)
 freebsd-up ps --all
@@ -431,8 +530,8 @@ freebsd-up ps --all
 # Start a previously created VM
 freebsd-up start my-freebsd-vm
 
-# Start a VM in background mode
-freebsd-up start my-freebsd-vm --detach
+# Start a VM in background mode with volume
+freebsd-up start my-freebsd-vm --detach --volume my-data
 
 # Stop a running VM
 freebsd-up stop my-freebsd-vm
@@ -451,6 +550,24 @@ freebsd-up logs my-freebsd-vm --follow
 
 # Remove a VM
 freebsd-up rm my-freebsd-vm
+
+# Run a VM from an OCI registry image
+freebsd-up run ghcr.io/tsirysndr/freebsd:15.0-BETA4
+
+# List all volumes
+freebsd-up volumes
+
+# Remove a volume
+freebsd-up volume rm my-volume
+
+# Inspect a volume
+freebsd-up volume inspect my-volume
+
+# Start the HTTP API server
+freebsd-up serve
+
+# Start API server on custom port
+freebsd-up serve --port 9000
 ```
 
 ## 🖥️ Console Setup
@@ -606,6 +723,9 @@ Key architecture components:
   (see `src/db.ts`)
 - **Image management**: OCI registry integration for sharing and distributing VM
   images (see `src/images.ts`, `src/oras.ts`)
+- **Volume management**: Persistent volume support for VM storage (see
+  `src/volumes.ts`)
+- **HTTP API**: RESTful API server for remote VM management (see `src/api/`)
 - **Configuration files**: TOML-based configuration for declarative VM setups
   (see `src/config.ts`)
 - **Effect-based error handling**: Functional error handling and async
@@ -649,6 +769,13 @@ freebsd-up/
     ├── state.ts         # VM state management functions
     ├── types.ts         # TypeScript type definitions
     ├── utils.ts         # Core VM utilities and QEMU interface
+    ├── volumes.ts       # Volume management functions
+    ├── api/             # HTTP API server
+    │   ├── images.ts    # Image management API endpoints
+    │   ├── machines.ts  # VM management API endpoints
+    │   ├── volumes.ts   # Volume management API endpoints
+    │   ├── utils.ts     # API utilities and helpers
+    │   └── mod.ts       # API server entry point
     └── subcommands/     # CLI subcommand implementations
         ├── images.ts    # List images command
         ├── inspect.ts   # VM inspection command
@@ -662,9 +789,11 @@ freebsd-up/
         ├── rm.ts        # VM removal command
         ├── rmi.ts       # Remove image command
         ├── run.ts       # Run VM command
+        ├── serve.ts     # HTTP API server command
         ├── start.ts     # VM start command
         ├── stop.ts      # VM stop command
-        └── tag.ts       # Tag image command
+        ├── tag.ts       # Tag image command
+        └── volume.ts    # Volume management commands
 ```
 
 ### Dependencies
@@ -699,6 +828,8 @@ The project uses the following key dependencies:
   for error handling and async operations
 - **[moniker](https://www.npmjs.com/package/moniker)** - Unique name generation
   for VMs
+- **[hono](https://www.npmjs.com/package/hono)** - Fast and lightweight web
+  framework for the HTTP API server
 
 ## 🤝 Contributing
 
