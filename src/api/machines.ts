@@ -144,7 +144,8 @@ app.post("/:id/start", (c) =>
           const firmwareArgs = yield* setupFirmware();
           const qemuArgs = yield* buildQemuArgs({
             ...vm,
-            cpu: String(startRequest.cpus ?? vm.cpu),
+            cpu: String(startRequest.cpu ?? vm.cpu),
+            cpus: startRequest.cpus ?? vm.cpus,
             memory: startRequest.memory ?? vm.memory,
             portForward: startRequest.portForward
               ? startRequest.portForward.join(",")
